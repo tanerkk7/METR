@@ -1,0 +1,2446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>METR Workbench — Marginal Effective Tax Rate Calculator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink:        #0A1F44;
+  --ink-2:      #123166;
+  --paper:      #F4EFE3;
+  --paper-2:    #ECE4D2;
+  --paper-line: #D9CFB6;
+  --gold:       #C9A24B;
+  --gold-dim:   #9C7E3D;
+  --red:        #8B3A3A;
+  --green:      #2F5233;
+  --text-dark:  #1C1A14;
+  --text-mute:  #5B5747;
+  --text-pale:  #8B8674;
+
+  --font-display: "Source Serif 4", "Iowan Old Style", Georgia, serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", "SF Mono", Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+
+body {
+  background: var(--ink);
+  background-image:
+    radial-gradient(circle at 18% 8%, rgba(201,162,75,0.07), transparent 38%),
+    radial-gradient(circle at 85% 92%, rgba(201,162,75,0.05), transparent 42%);
+  color: var(--text-dark);
+  font-family: var(--font-body);
+  min-height: 100vh;
+}
+
+/* ---------- Top masthead ---------- */
+.masthead {
+  padding: 38px 5vw 22px;
+  border-bottom: 1px solid rgba(201,162,75,0.25);
+}
+.masthead-inner {
+  max-width: 1320px;
+  margin: 0 auto;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+.masthead-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin: 0 0 6px;
+}
+.masthead h1 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(28px, 4vw, 44px);
+  color: var(--paper);
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+.masthead h1 em {
+  font-style: italic;
+  color: var(--gold);
+}
+.masthead-sub {
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  color: rgba(244,239,227,0.55);
+  max-width: 420px;
+  text-align: right;
+  line-height: 1.5;
+}
+
+/* ---------- Main grid ---------- */
+.workbench {
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 34px 5vw 90px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(420px, 0.5fr);
+  gap: 28px;
+  align-items: start;
+}
+@media (max-width: 980px) {
+  .workbench { grid-template-columns: 1fr; }
+}
+
+/* ---------- Ledger panel (left, inputs) ---------- */
+.ledger {
+  background: var(--paper);
+  border-radius: 3px;
+  box-shadow: 0 30px 60px -20px rgba(0,0,0,0.55), 0 1px 0 rgba(255,255,255,0.04) inset;
+  overflow: hidden;
+  position: relative;
+}
+.ledger::before {
+  content: "";
+  position: absolute; top: 0; left: 0; right: 0; height: 6px;
+  background: linear-gradient(90deg, var(--gold-dim), var(--gold), var(--gold-dim));
+}
+
+.tab-row {
+  display: flex;
+  overflow-x: visible;
+  background: var(--paper-2);
+  border-bottom: 1px solid var(--paper-line);
+  scrollbar-width: thin;
+}
+.tab-btn {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  padding: 14px 10px 12px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-mute);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+.tab-btn .tab-num { color: var(--gold-dim); margin-right: 7px; }
+.tab-btn:hover { color: var(--text-dark); background: rgba(201,162,75,0.08); }
+.tab-btn.active { color: var(--ink); border-bottom-color: var(--gold); background: var(--paper); }
+.tab-btn.active .tab-num { color: var(--gold-dim); }
+
+.panel-body { padding: 26px 28px 30px; }
+.panel-section { display: none; }
+.panel-section.active { display: block; animation: fadein 0.25s ease; }
+@keyframes fadein { from { opacity: 0; transform: translateY(3px);} to { opacity: 1; transform: translateY(0);} }
+
+.panel-title {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0 0 4px;
+  color: var(--ink);
+}
+.panel-desc {
+  font-size: 12.5px;
+  color: var(--text-mute);
+  margin: 0 0 22px;
+  line-height: 1.5;
+  max-width: 520px;
+}
+
+.field-group { margin-bottom: 22px; }
+.field-group-label {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--gold-dim);
+  margin: 0 0 10px;
+  border-bottom: 2px solid var(--gold-dim);
+  padding-bottom: 6px;
+  font-weight: 700;
+}
+
+.field-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 14px 18px;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.field label {
+  font-size: 12.5px;
+  color: #0A1F44;
+  font-weight: 700;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+}
+.field label .unit {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-pale);
+  font-weight: 400;
+}
+.field input[type="number"], .field input[type="text"], .field select {
+  font-family: var(--font-mono);
+  font-size: 13.5px;
+  padding: 7px 9px;
+  border: 1px solid var(--paper-line);
+  border-radius: 2px;
+  background: #FFFEFB;
+  color: var(--text-dark);
+  width: 100%;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.field input:focus, .field select:focus {
+  outline: none;
+  border-color: var(--gold-dim);
+  box-shadow: 0 0 0 3px rgba(201,162,75,0.16);
+}
+.field-toggle {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 0;
+}
+.field-toggle input[type="checkbox"] {
+  width: 17px; height: 17px;
+  accent-color: var(--gold-dim);
+  cursor: pointer;
+}
+.field-toggle label { font-size: 12.5px; cursor: pointer; margin: 0; }
+.field-note {
+  font-size: 10.5px;
+  color: var(--text-pale);
+  line-height: 1.4;
+  margin-top: 2px;
+}
+
+.asset-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+.asset-table th {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-pale);
+  text-align: left;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--paper-line);
+}
+.asset-table td {
+  padding: 5px 8px;
+  border-bottom: 1px solid rgba(217,207,182,0.5);
+}
+.asset-table td:first-child {
+  font-weight: 700;
+  color: #0A1F44;
+  white-space: nowrap;
+}
+.asset-table input {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  width: 100%;
+  min-width: 52px;
+  padding: 5px 4px;
+  border: 1px solid var(--paper-line);
+  border-radius: 2px;
+  background: #FFFEFB;
+}
+.asset-table { table-layout: fixed; }
+.asset-table th, .asset-table td { overflow: hidden; }
+.asset-table select {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  padding: 4px 4px;
+  border: 1px solid var(--paper-line);
+  border-radius: 2px;
+  background: #FFFEFB;
+  width: 100%;
+}
+
+/* ---------- Results column (right) ---------- */
+.results-col {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  position: sticky;
+  top: 24px;
+}
+
+.metr-seal {
+  background: linear-gradient(160deg, var(--ink-2), var(--ink) 70%);
+  border-radius: 3px;
+  padding: 30px 28px 26px;
+  box-shadow: 0 30px 60px -20px rgba(0,0,0,0.6);
+  position: relative;
+  overflow: hidden;
+}
+.metr-seal::after {
+  content: "";
+  position: absolute; inset: 0;
+  background: radial-gradient(circle at 80% -10%, rgba(201,162,75,0.18), transparent 55%);
+  pointer-events: none;
+}
+.metr-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin: 0 0 10px;
+}
+.metr-value-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+  margin-bottom: 6px;
+}
+.metr-value {
+  font-family: var(--font-display);
+  font-size: clamp(54px, 9vw, 76px);
+  font-weight: 600;
+  color: var(--paper);
+  line-height: 0.9;
+  letter-spacing: -0.02em;
+}
+.metr-value .pct { font-size: 0.5em; color: var(--gold); margin-left: 2px; }
+.metr-caption {
+  font-size: 12.5px;
+  color: rgba(244,239,227,0.6);
+  margin: 0 0 20px;
+  line-height: 1.5;
+}
+.metr-caption b { color: var(--paper); font-weight: 600; }
+
+.wedge-viz { margin: 4px 0 18px; }
+
+.metr-stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1px;
+  background: rgba(201,162,75,0.18);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.metr-stat {
+  background: rgba(11,31,42,0.55);
+  padding: 12px 14px;
+}
+.metr-stat-label {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(244,239,227,0.45);
+  margin: 0 0 4px;
+}
+.metr-stat-value {
+  font-family: var(--font-mono);
+  font-size: 18px;
+  color: var(--paper);
+  font-weight: 500;
+}
+
+.chart-card, .table-card {
+  background: var(--paper);
+  border-radius: 3px;
+  box-shadow: 0 24px 50px -22px rgba(0,0,0,0.5);
+  padding: 22px 24px 20px;
+}
+.card-title {
+  font-family: var(--font-display);
+  font-size: 15.5px;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0 0 3px;
+}
+.card-sub {
+  font-size: 11.5px;
+  color: var(--text-mute);
+  margin: 0 0 16px;
+}
+
+.pv-list { list-style: none; margin: 0; padding: 0; }
+.pv-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--paper-line);
+  font-size: 12.5px;
+}
+.pv-list li:last-child { border-bottom: none; font-weight: 700; }
+.pv-list .pv-label { color: var(--text-dark); }
+.pv-list .pv-value { font-family: var(--font-mono); color: var(--ink); }
+
+.recalc-note {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: rgba(244,239,227,0.4);
+  text-align: center;
+  letter-spacing: 0.04em;
+}
+
+footer {
+  text-align: center;
+  padding: 0 5vw 50px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: rgba(244,239,227,0.32);
+  letter-spacing: 0.04em;
+}
+footer a { color: var(--gold-dim); text-decoration: none; }
+.howitworks-btn {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gold);
+  background: transparent;
+  border: 1px solid rgba(201,162,75,0.4);
+  border-radius: 3px;
+  padding: 8px 14px;
+  cursor: pointer;
+}
+.howitworks-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  z-index: 100;
+}
+.howitworks-overlay.open { display: flex; align-items: center; justify-content: center; }
+.howitworks-modal {
+  background: var(--paper);
+  max-width: 700px;
+  max-height: 80vh;
+  overflow-y: auto;
+  padding: 30px;
+  border-radius: 4px;
+  position: relative;
+}
+.howitworks-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  font-size: 24px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-mute);
+}
+.hiw-intro {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-dark);
+  margin-bottom: 24px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--paper-line);
+}
+
+.hiw-card {
+  margin-bottom: 18px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--paper-line);
+}
+.hiw-card:last-child { border-bottom: none; }
+
+.hiw-card h3 {
+  font-family: var(--font-display);
+  font-size: 16.5px;
+  color: var(--ink);
+  margin: 0 0 8px;
+}
+
+.hiw-card p {
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--text-dark);
+  margin: 0 0 10px;
+}
+
+.hiw-toggle {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--gold-dim);
+  background: rgba(201,162,75,0.1);
+  border: 1px solid rgba(201,162,75,0.3);
+  border-radius: 3px;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+.hiw-toggle:hover { background: rgba(201,162,75,0.18); }
+
+.hiw-formula {
+  display: none;
+  margin-top: 12px;
+  padding: 14px 16px;
+  background: var(--paper-2);
+  border-left: 3px solid var(--gold);
+  border-radius: 2px;
+}
+.hiw-formula.open { display: block; }
+.hiw-formula code {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--ink);
+  margin-bottom: 8px;
+}
+.hiw-formula p {
+  font-size: 12.5px;
+  color: var(--text-mute);
+  margin: 0;
+}
+.hiw-formula code:not(:first-child) {
+  display: inline;
+  background: rgba(11,31,42,0.08);
+  padding: 1px 5px;
+  border-radius: 2px;
+}
+.download-btn {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink);
+  background: var(--gold);
+  border: none;
+  border-radius: 3px;
+  padding: 11px 18px;
+  cursor: pointer;
+  width: 100%;
+  transition: background 0.15s;
+}
+.download-btn:hover { background: var(--gold-dim); }
+/* ---------- Print report view ---------- */
+.report-view { display: none; max-width: 720px; }
+
+.report-header { margin-bottom: 28px; border-bottom: 2px solid var(--gold); padding-bottom: 14px; }
+.report-eyebrow { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gold-dim); margin: 0 0 6px; }
+.report-header h1 { font-family: var(--font-display); font-size: 26px; margin: 0 0 6px; color: var(--ink); }
+.report-date { font-size: 12px; color: var(--text-mute); margin: 0; }
+
+.report-section { margin-bottom: 26px; }
+.report-section h2 { font-family: var(--font-display); font-size: 16px; color: var(--ink); margin: 0 0 10px; border-bottom: 1px solid var(--paper-line); padding-bottom: 6px; }
+
+.report-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.report-table td { padding: 6px 4px; border-bottom: 1px solid var(--paper-line); }
+.report-table td:last-child { text-align: right; font-family: var(--font-mono); }
+
+.report-params-group { margin-bottom: 14px; }
+.report-params-group h3 { font-family: var(--font-mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--gold-dim); margin: 0 0 6px; }
+.report-params-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px 16px; font-size: 12px; }
+.report-params-grid div { display: flex; justify-content: space-between; border-bottom: 1px dotted var(--paper-line); padding: 2px 0; }
+.report-params-grid span:last-child { font-family: var(--font-mono); }
+.report-params-grid div.param-changed {
+  font-weight: 700;
+}
+.report-params-grid div.param-changed span:first-child {
+  color: var(--gold-dim);
+}
+
+.report-legend {
+  font-size: 11px;
+  font-style: italic;
+  color: var(--text-mute);
+  margin: 0 0 12px;
+}
+
+.report-footer { font-size: 10.5px; color: var(--text-pale); margin-top: 30px; border-top: 1px solid var(--paper-line); padding-top: 10px; }
+
+@media print {
+  @page {
+    size: A4;
+    margin: 16mm 14mm;
+  }
+
+  body * { visibility: hidden; }
+  .report-view, .report-view * { visibility: visible; }
+
+  .report-view {
+    display: block;
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%;
+    background: white;
+    padding: 0;
+  }
+
+  .report-header { break-after: avoid; }
+  .report-section { break-inside: avoid; margin-bottom: 20px; }
+  .report-section h2 { break-after: avoid; }
+  .report-table { break-inside: avoid; }
+  .report-params-group { break-inside: avoid; }
+  #rp-wedge, #rp-cashflow { break-inside: avoid; }
+
+  .report-footer { break-before: avoid; }
+}
+.scenario-select {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--paper);
+  background: rgba(244,239,227,0.08);
+  border: 1px solid rgba(201,162,75,0.4);
+  border-radius: 3px;
+  padding: 8px 10px;
+  cursor: pointer;
+  margin-right: 8px;
+}
+.scenario-select option {
+  background: var(--ink);
+  color: var(--paper);
+}
+.chart-card-full {
+  max-width: 1320px;
+  margin: 0 auto 90px;
+  padding: 22px 5vw 28px;
+  background: var(--paper);
+  border-radius: 3px;
+  box-shadow: 0 24px 50px -22px rgba(0,0,0,0.5);
+}
+.source-note-group { border-top: 2px dashed var(--gold-dim); padding-top: 16px; margin-top: 26px; }
+.source-note-input {
+  width: 100%;
+  min-height: 56px;
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  padding: 8px 10px;
+  border: 1px solid var(--paper-line);
+  border-radius: 2px;
+  background: #FFFEFB;
+  color: var(--text-dark);
+  resize: vertical;
+}
+.source-note-input:focus { outline: none; border-color: var(--gold-dim); box-shadow: 0 0 0 3px rgba(201,162,75,0.16); }
+#rp-wedge svg, #rp-cashflow svg { max-width: 100%; height: auto; }
+.report-section-chart { page-break-inside: avoid; }
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="masthead-inner">
+    <div>
+      <p class="masthead-eyebrow">Fiscal Policy Workbench</p>
+      <h1>METR <em>Workbench</em></h1>
+    </div>
+    <p class="masthead-sub">Marginal effective tax rate calculator, after Dunn &amp; Pellechio — adapted by Sebastian James &amp; Bruce Bolnick. Every figure below recalculates live as you edit the ledger.</p>
+  <button class="howitworks-btn" id="howItWorksBtn" type="button">How it works</button>
+<select class="scenario-select" id="scenarioSelect">
+  <option value="default">Default (generic)</option>
+  <optgroup label="OECD members">
+    <option value="australia">Australia</option>
+    <option value="austria">Austria</option>
+    <option value="belgium">Belgium</option>
+    <option value="canada">Canada</option>
+    <option value="chile">Chile</option>
+    <option value="colombia">Colombia</option>
+    <option value="costaRica">Costa Rica</option>
+    <option value="czechia">Czechia</option>
+    <option value="denmark">Denmark</option>
+    <option value="estonia">Estonia</option>
+    <option value="finland">Finland</option>
+    <option value="france">France</option>
+    <option value="germany">Germany</option>
+    <option value="greece">Greece</option>
+    <option value="hungary">Hungary</option>
+    <option value="iceland">Iceland</option>
+    <option value="ireland">Ireland</option>
+    <option value="israel">Israel</option>
+    <option value="italy">Italy</option>
+    <option value="japan">Japan</option>
+    <option value="korea">Korea</option>
+    <option value="latvia">Latvia</option>
+    <option value="lithuania">Lithuania</option>
+    <option value="luxembourg">Luxembourg</option>
+    <option value="mexico">Mexico</option>
+    <option value="netherlands">Netherlands</option>
+    <option value="newZealand">New Zealand</option>
+    <option value="norway">Norway</option>
+    <option value="poland">Poland</option>
+    <option value="portugal">Portugal</option>
+    <option value="slovakia">Slovakia</option>
+    <option value="slovenia">Slovenia</option>
+    <option value="spain">Spain</option>
+    <option value="sweden">Sweden</option>
+    <option value="switzerland">Switzerland</option>
+    <option value="türkiye">Türkiye</option>
+    <option value="unitedKingdom">United Kingdom</option>
+    <option value="unitedStates">United States</option>
+  </optgroup>
+  <optgroup label="Other major economies">
+    <option value="china">China</option>
+    <option value="india">India</option>
+    <option value="brazil">Brazil</option>
+    <option value="argentina">Argentina</option>
+    <option value="southAfrica">South Africa</option>
+    <option value="nigeria">Nigeria</option>
+    <option value="egypt">Egypt</option>
+  </optgroup>
+</select>
+  </div>
+</header>
+
+<main class="workbench" id="app">
+  <!-- LEFT: input ledger -->
+  <section class="ledger">
+    <nav class="tab-row" id="tabRow"></nav>
+    <div class="panel-body" id="panelBody"></div>
+  </section>
+
+  <!-- RIGHT: results -->
+  <aside class="results-col">
+    <div class="metr-seal">
+      <p class="metr-eyebrow">Marginal Effective Tax Rate</p>
+      <div class="metr-value-row">
+        <span class="metr-value" id="metrValue">—<span class="pct">%</span></span>
+      </div>
+      <p class="metr-caption" id="metrCaption">Set your parameters to see the wedge between before- and after-tax returns.</p>
+      <div class="wedge-viz" id="wedgeViz"></div>
+      <div class="metr-stats">
+        <div class="metr-stat">
+          <p class="metr-stat-label">Real before-tax ROR</p>
+          <p class="metr-stat-value" id="statBTROR">—</p>
+        </div>
+        <div class="metr-stat">
+          <p class="metr-stat-label">Real after-tax ROR</p>
+          <p class="metr-stat-value" id="statATROR">—</p>
+        </div>
+        <div class="metr-stat">
+          <p class="metr-stat-label">Nominal before-tax</p>
+          <p class="metr-stat-value" id="statBTROR_n">—</p>
+        </div>
+        <div class="metr-stat">
+          <p class="metr-stat-label">Nominal after-tax</p>
+          <p class="metr-stat-value" id="statATROR_n">—</p>
+        </div>
+      </div>
+    </div>
+ 
+    <div class="table-card">
+      <p class="card-title">Present value of taxes paid</p>
+      <p class="card-sub">Discounted at the real before-tax rate of return, years 1–10.</p>
+      <ul class="pv-list" id="pvList"></ul>
+    </div>
+    <button class="download-btn" id="downloadReportBtn" type="button">Download Report (PDF)</button>
+    <p class="recalc-note">RECALCULATED CLIENT-SIDE · NO DATA LEAVES THIS PAGE</p>
+  </aside>
+</main>
+<section class="chart-card-full">
+  <p class="card-title">Cash flow, year by year</p>
+  <p class="card-sub">Real before- and after-tax cash flow over the operating period.</p>
+  <div id="cashflowChart"></div>
+</section>
+<div id="reportView" class="report-view">
+  <div class="report-header">
+    <p class="report-eyebrow">Fiscal Policy Workbench — METR Report</p>
+    <h1 id="reportTitle">Marginal Effective Tax Rate Analysis</h1>
+    <p class="report-date" id="reportDate"></p>
+  </div>
+
+  <div class="report-section">
+    <h2>Result</h2>
+    <table class="report-table">
+      <tr><td>Marginal Effective Tax Rate (METR)</td><td id="rp-metr"></td></tr>
+      <tr><td>Real before-tax rate of return</td><td id="rp-btror"></td></tr>
+      <tr><td>Real after-tax rate of return</td><td id="rp-atror"></td></tr>
+      <tr><td>Nominal before-tax rate of return</td><td id="rp-btror-n"></td></tr>
+      <tr><td>Nominal after-tax rate of return</td><td id="rp-atror-n"></td></tr>
+    </table>
+  </div>
+
+  <div class="report-section">
+    <h2>Before- vs. after-tax wedge</h2>
+    <div id="rp-wedge"></div>
+  </div>
+
+  <div class="report-section report-section-chart">
+    <h2>Cash flow, year by year</h2>
+    <div id="rp-cashflow"></div>
+  </div>
+
+  <div class="report-section">
+    <h2>Present value of taxes paid (years 1–10)</h2>
+    <table class="report-table">
+      <tr><td>Income &amp; capital-gains tax</td><td id="rp-pv1"></td></tr>
+      <tr><td>— of which, capital gains tax</td><td id="rp-pv2"></td></tr>
+      <tr><td>Dividend tax (after credits)</td><td id="rp-pv3"></td></tr>
+      <tr><td>Import taxes</td><td id="rp-pv4"></td></tr>
+      <tr><td><strong>All taxes, combined</strong></td><td id="rp-pv5"></td></tr>
+    </table>
+  </div>
+
+  <div class="report-section">
+  <h2>Parameters used</h2>
+  <p class="report-legend">Bold values marked with * differ from the tool's generic defaults — these are the parameters this analysis actually relies on.</p>
+  <div id="rp-params"></div>
+</div>
+
+  <p class="report-footer">Generated by the METR Workbench (Dunn–Pellechio model) — for teaching &amp; policy analysis, not a substitute for the original workbook.</p>
+</div>
+<div class="howitworks-overlay" id="howItWorksOverlay">
+  <div class="howitworks-modal">
+    <button class="howitworks-close" id="howItWorksClose" type="button">&times;</button>
+    <h2>How the METR is calculated</h2>
+    <p class="hiw-intro">
+  The METR answers one question: <strong>if this investment earns a certain return before tax, how much of that return survives the tax system?</strong>
+  The model builds two parallel cash-flow streams for the same project — one ignoring tax, one fully taxed — and compares the rate of return each one implies.
+</p>
+
+<div class="hiw-card">
+  <h3>1. Before-tax rate of return (BTROR)</h3>
+  <p>This is the return the project would earn in a world with no taxes at all. We build a 20+ year cash flow — the initial investment going out, operating income coming in every year, and the asset's resale value at the end — and find the single discount rate that makes that stream worth exactly zero today. That discount rate <em>is</em> the before-tax return.</p>
+  <button class="hiw-toggle" data-target="formula-btror">Show the formula</button>
+<div class="hiw-formula" id="formula-btror">
+  <code>BTROR = IRR( real before-tax cash flow, year 0 to year N )</code>
+  <p>This is the number shown in the <strong>"Real before-tax ROR"</strong> box on the right. IRR (internal rate of return) is solved numerically — there's no closed-form formula, the engine just tries rates until the stream's present value hits zero.</p>
+</div>
+</div>
+
+<div class="hiw-card">
+  <h3>2. After-tax rate of return (ATROR)</h3>
+  <p>Same project, same years — but now every tax in the system gets applied: corporate income tax, depreciation rules, import duties, dividend withholding, capital gains tax on the eventual sale. Whatever cash is left over after all of that is the after-tax cash flow. We find the discount rate that zeroes <em>that</em> stream out, the same way as before.</p>
+  <button class="hiw-toggle" data-target="formula-atror">Show the formula</button>
+  <div class="hiw-formula" id="formula-atror">
+  <code>ATROR = IRR( real after-tax cash flow, year 0 to year N )</code>
+  <p>This is the number shown in the <strong>"Real after-tax ROR"</strong> box on the right. The after-tax cash flow already has income tax, depreciation effects, debt interest deductions, dividend tax, and capital gains tax baked into it — see the Income Tax, Losses &amp; Credits, and Depreciation tabs for where each piece comes from.</p>
+</div>
+</div>
+
+<div class="hiw-card">
+  <h3>3. The METR itself</h3>
+  <p>The METR is simply the share of the before-tax return that tax eats up. If BTROR and ATROR are close together, taxes barely bite. If ATROR is much lower than BTROR — or even negative — the tax system is taking a large bite out of the project's return.</p>
+  <button class="hiw-toggle" data-target="formula-metr">Show the formula</button>
+  <div class="hiw-formula" id="formula-metr">
+  <code>METR = (BTROR − ATROR) / BTROR</code>
+  <p>This is the big number at the top of the results panel. A METR of 0% means tax has no effect on this investment's return. A METR of 100% means tax absorbs the entire return. A <em>negative</em> METR means the after-tax return is actually higher than the before-tax one — usually a sign of a generous incentive (an investment tax credit or a tax holiday) more than offsetting the tax burden.</p>
+</div>
+</div>
+  </div>
+</div>
+
+<footer>
+  Dunn–Pellechio METR model · JS port for teaching &amp; policy analysis · not a substitute for the original workbook
+</footer>
+
+<script>
+/* ====================== METR ENGINE (inlined) ====================== */
+// ==== from metr-engine.js ====
+/* ============================================================================
+   METR ENGINE — Dunn-Pellechio Marginal Effective Tax Rate Model
+   JS port of "METR_Model_-_Dunn_Pellechio.xls" (Sebastian James / Bruce Bolnick
+   revision, Aug 2003).
+   Years run t = 0..N (N = Operating Period, capped here at 30 to match the
+   original spreadsheet's AC:BG column range).
+   ========================================================================= */
+
+const NYEARS = 30; // periods 1..30 plus period 0 = 31 columns (AC..BG)
+
+function zeros(n) { return new Array(n + 1).fill(0); }
+
+// ---- safe helpers mirroring Excel semantics ----
+function IF(cond, a, b) { return cond ? a : b; }
+function MAX(...args) { return Math.max(...args); }
+function MIN(...args) { return Math.min(...args); }
+function OR(...args) { return args.some(Boolean); }
+function AND(...args) { return args.every(Boolean); }
+function TRUNC(x) { return Math.trunc(x); }
+function SUM(arr) { return arr.reduce((a, b) => a + (b || 0), 0); }
+
+function PMT(rate, nper, pv) {
+  // Excel PMT(rate, nper, pv) with fv=0, type=0. Returns payment (matches sign convention: pv negative -> positive pmt)
+  if (rate === 0) return -(pv / nper);
+  const pow = Math.pow(1 + rate, nper);
+  return -(rate * pv * pow) / (pow - 1);
+}
+
+function NPV(rate, values) {
+  // Excel NPV: discounts starting at period 1 for values[0]
+  let npv = 0;
+  for (let i = 0; i < values.length; i++) {
+    npv += values[i] / Math.pow(1 + rate, i + 1);
+  }
+  return npv;
+}
+
+function IRR(cashflows, guess = 0.1) {
+  // Newton-Raphson with bisection fallback, matches Excel IRR behavior closely enough
+  // cashflows[0] is period-0 flow (typically negative), cashflows[i] period i
+  function npvAt(rate) {
+    let s = 0;
+    for (let i = 0; i < cashflows.length; i++) {
+      s += cashflows[i] / Math.pow(1 + rate, i);
+    }
+    return s;
+  }
+  function dnpvAt(rate) {
+    let s = 0;
+    for (let i = 1; i < cashflows.length; i++) {
+      s += -i * cashflows[i] / Math.pow(1 + rate, i + 1);
+    }
+    return s;
+  }
+  let rate = guess;
+  for (let iter = 0; iter < 100; iter++) {
+    const f = npvAt(rate);
+    const df = dnpvAt(rate);
+    if (Math.abs(df) < 1e-12) break;
+    const newRate = rate - f / df;
+    if (!isFinite(newRate)) break;
+    if (Math.abs(newRate - rate) < 1e-10) { rate = newRate; break; }
+    rate = newRate;
+    if (rate <= -0.999999) rate = -0.999999 + 1e-6;
+  }
+  // Validate; fall back to bisection over a wide bracket if Newton diverged
+  if (!isFinite(rate) || Math.abs(npvAt(rate)) > 1e-4) {
+    let lo = -0.9999, hi = 10;
+    let flo = npvAt(lo), fhi = npvAt(hi);
+    if (flo * fhi > 0) {
+      // widen search
+      hi = 1000;
+      fhi = npvAt(hi);
+    }
+    for (let iter = 0; iter < 200 && flo * fhi <= 0; iter++) {
+      const mid = (lo + hi) / 2;
+      const fm = npvAt(mid);
+      if (Math.abs(fm) < 1e-9) { rate = mid; break; }
+      if (flo * fm < 0) { hi = mid; fhi = fm; } else { lo = mid; flo = fm; }
+      rate = mid;
+    }
+  }
+  return rate;
+}
+
+function vlookupHistory(arr, idx) {
+  // arr is 0-indexed by year t=0.., idx is 1-based position matching Excel VLOOKUP(...,...,col_index)
+  // Excel: VLOOKUP($AC$92,$AC$92:AD92, n) effectively returns arr[n-1] when n>=1
+  const i = Math.round(idx) - 1;
+  if (i < 0 || i >= arr.length) return 0;
+  return arr[i] || 0;
+}
+
+function defaultParams() {
+  return {
+    sources: { investment: '', income: '', losses: '', imports: '', depreciation: '', incentives: '' },
+    origInvestment: 100,
+    shareLand: 0.10,
+    shareBuildings: 0.30,
+    shareME: 0.55,
+    shareVehicles: 0.05,
+    shareOther: 0.00,
+    replaceOrigInvest: 0,
+    realBeforeTaxROR: 0.08,
+    wagesPctOpInc: 0.30,
+    materialsPctOpInc: 0.30,
+    operatingPeriod: 20,
+    retainedEarnPctATInc: 0.0,
+    pctSaleYearProceeds: 1.0,
+    debtPctOrigInv: 0.40,
+    constantDE: 0,
+    yearsInterestOnly: 0,
+    loanTerm: 20,
+    intRateOnDebt: 0.15,
+    inflationRate: 0.07,
+    incomeTaxRate: 0.0,
+    surtaxRate: 0.0,
+    surtaxYears: 0,
+    minTaxPctRev: 0.0,
+    minTaxIncPctRev: 0.0,
+    minTaxIncPctAssets: 0.0,
+    deductWages: 1,
+    deductMaterials: 1,
+    deductDepreciation: 1,
+    indexDepreciation: 0,
+    adjustInvForLag: 0,
+    rateOfIndexationDepr: null,
+    deductInterestPaid: 1,
+    indexInterestPaid: 0,
+    rateOfIndexationInt: null,
+    deductPmtsOnPrincipal: 0,
+    capLossOffset: 1,
+    balancingAdjOption: 0,
+    capGainsTaxRate: 0.0,
+    capGainsOption: 3,
+    indexCGBase: 0,
+    rateOfIndexationCG: null,
+    fullLossOffset: 0,
+    carryOverLosses: 0,
+    shrEligibleCOL: 1.0,
+    indexCOL: 0,
+    rateOfIndexationCOL: null,
+    eligibleYearsCOL: 30,
+    forwardYearsCOL: 30,
+    exemptYearsHoliday: 0,
+    creditsRedeemable: 0,
+    carryOverCredits: 1,
+    indexCOC: 0,
+    rateOfIndexationCOC: null,
+    eligibleYearsCOC: 30,
+    forwardYearsCOC: 30,
+    deductDividends: 0,
+    dividendTaxCredit: 0.15,
+    corpIncTaxCredit: 0,
+    corpIncTaxOffset: 0,
+    limitPctDivd: 0,
+    deductRE: 0,
+    reTaxCredit: 0,
+    intRateOnRE: null,
+    taxInterestEarned: 1,
+    indexIntEarned: 0,
+    rateOfIndexationIntEarned: null,
+    importTax: {
+      buildings: { deductFromIncTax: 1, pctImported: 0.0, rate: 0.10, exemptionRate: 0.0, exemptionPeriod: 0.0 },
+      me:        { pctImported: 0.0, rate: 0.10, exemptionRate: 0.0, exemptionPeriod: 0.0 },
+      vehicles:  { pctImported: 0.0, rate: 0.10, exemptionRate: 0.0, exemptionPeriod: 0.0 },
+      other:     { pctImported: 0.0, rate: 0.0,  exemptionRate: 0.0, exemptionPeriod: 0.0 },
+    },
+    itcAllowedAgainstImportDuty: 0,
+    cashFlowTax: 0,
+    excessProfitsTax: 0,
+    normProfPctAssets: 0,
+    propertyWealthTax: 0,
+    persTaxOnDivds: 0,
+    persCGTaxRate: 0,
+    indexCGBasePersonal: 0,
+    rateOfIndexationPersCG: null,
+    capLossOffsetPersonal: 1,
+    depreciation: {
+      buildings: { initialAllowInitYr: 0, initialAllowFinalYr: 0, initialAllowRate: 0, adjBase: 0, method: 1, rate: 0.10, life: 30, switchover: 0, ecDeprRate: 0.036 },
+      me:        { initialAllowInitYr: 0, initialAllowFinalYr: 0, initialAllowRate: 0, adjBase: 0, method: 1, rate: 0.20, life: 30, switchover: 0, ecDeprRate: 0.1225 },
+      vehicles:  { initialAllowInitYr: 0, initialAllowFinalYr: 0, initialAllowRate: 0, adjBase: 0, method: 1, rate: 0.30, life: 30, switchover: 0, ecDeprRate: 0.30 },
+      other:     { initialAllowInitYr: 0, initialAllowFinalYr: 0, initialAllowRate: 0, adjBase: 0, method: 1, rate: 0.0,  life: 30, switchover: 0, ecDeprRate: 0.0 },
+    },
+    invDeduction: {
+      project: { rate: 0, initYr: 0, finalYr: 0, adjBases: 0 },
+      land:    { rate: 0, initYr: 0, finalYr: 0, adjBases: 0 },
+      bld:     { rate: 0, initYr: 0, finalYr: 0, adjBases: 0 },
+      me:      { rate: 0, initYr: 0, finalYr: 0, adjBases: 0 },
+      veh:     { rate: 0, initYr: 0, finalYr: 0, adjBases: 0 },
+      other:   { rate: 0, initYr: 0, finalYr: 0, adjBases: 0 },
+    },
+    itc: {
+      project: { rate: 0, initYr: 0, finalYr: 0, adjBases: 0 },
+      land:    { rate: 0, initYr: 0, finalYr: 0, adjBases: 0 },
+      bld:     { rate: 0, initYr: 0, finalYr: 0, adjBases: 0 },
+      me:      { rate: 0, initYr: 0, finalYr: 0, adjBases: 0 },
+      veh:     { rate: 0, initYr: 0, finalYr: 0, adjBases: 0 },
+      other:   { rate: 0, initYr: 0, finalYr: 0, adjBases: 0 },
+    },
+    taxHoliday: { exemptPeriod1: 0, exemptionRate1: 0, exemptPeriod2: 0, exemptionRate2: 0 },
+    targetATROR: 0,
+    atrorTarget: 0.10,
+    opIncStart: 34.4,
+  };
+}
+/* ============================================================================
+   COUNTRY SCENARIOS
+   Each scenario is a partial override on top of defaultParams(). Only the
+   fields that differ from the generic default need to be listed.
+   ========================================================================= */
+const COUNTRY_SCENARIOS = {
+  default: {},
+
+  // ---- OECD members (corporate income tax rate, 2025, Tax Foundation/OECD) ----
+  australia:    { incomeTaxRate: 0.30, capGainsTaxRate: 0.30 },
+  austria:      { incomeTaxRate: 0.23, capGainsTaxRate: 0.23 },
+  belgium:      { incomeTaxRate: 0.25, capGainsTaxRate: 0.25 },
+  canada:       { incomeTaxRate: 0.2598, capGainsTaxRate: 0.2598 },
+  chile:        { incomeTaxRate: 0.27, capGainsTaxRate: 0.27 },
+  colombia:     { incomeTaxRate: 0.35, capGainsTaxRate: 0.35 },
+  costaRica:    { incomeTaxRate: 0.30, capGainsTaxRate: 0.30 },
+  czechia:      { incomeTaxRate: 0.21, capGainsTaxRate: 0.21 },
+  denmark:      { incomeTaxRate: 0.22, capGainsTaxRate: 0.22 },
+  estonia:      { incomeTaxRate: 0.22, capGainsTaxRate: 0.22 },
+  finland:      { incomeTaxRate: 0.20, capGainsTaxRate: 0.20 },
+  france:       { incomeTaxRate: 0.3613, capGainsTaxRate: 0.3613 },
+  germany:      { incomeTaxRate: 0.3006, capGainsTaxRate: 0.3006 },
+  greece:       { incomeTaxRate: 0.22, capGainsTaxRate: 0.22 },
+  hungary:      { incomeTaxRate: 0.09, capGainsTaxRate: 0.09 },
+  iceland:      { incomeTaxRate: 0.20, capGainsTaxRate: 0.20 },
+  ireland:      { incomeTaxRate: 0.125, capGainsTaxRate: 0.125 },
+  israel:       { incomeTaxRate: 0.23, capGainsTaxRate: 0.23 },
+  italy:        { incomeTaxRate: 0.2781, capGainsTaxRate: 0.2781 },
+  japan:        { incomeTaxRate: 0.2974, capGainsTaxRate: 0.2974 },
+  korea:        { incomeTaxRate: 0.264, capGainsTaxRate: 0.264 },
+  latvia:       { incomeTaxRate: 0.20, capGainsTaxRate: 0.20 },
+  lithuania:    { incomeTaxRate: 0.16, capGainsTaxRate: 0.16 },
+  luxembourg:   { incomeTaxRate: 0.2387, capGainsTaxRate: 0.2387 },
+  mexico:       { incomeTaxRate: 0.30, capGainsTaxRate: 0.30 },
+  netherlands:  { incomeTaxRate: 0.258, capGainsTaxRate: 0.258 },
+  newZealand:   { incomeTaxRate: 0.28, capGainsTaxRate: 0.28 },
+  norway:       { incomeTaxRate: 0.22, capGainsTaxRate: 0.22 },
+  poland:       { incomeTaxRate: 0.19, capGainsTaxRate: 0.19, dividendTaxCredit: 0.19, persTaxOnDivds: 0.19, carryOverLosses: 1, eligibleYearsCOL: 5, forwardYearsCOL: 5 },
+  portugal:     { incomeTaxRate: 0.305, capGainsTaxRate: 0.305 },
+  slovakia:     { incomeTaxRate: 0.24, capGainsTaxRate: 0.24 },
+  slovenia:     { incomeTaxRate: 0.22, capGainsTaxRate: 0.22 },
+  spain:        { incomeTaxRate: 0.25, capGainsTaxRate: 0.25 },
+  sweden:       { incomeTaxRate: 0.206, capGainsTaxRate: 0.206 },
+  switzerland:  { incomeTaxRate: 0.1961, capGainsTaxRate: 0.1961 },
+  türkiye: {
+    incomeTaxRate: 0.25,
+    capGainsTaxRate: 0.25,
+    dividendTaxCredit: 0.10,
+    persTaxOnDivds: 0.10,
+    carryOverLosses: 1,
+    eligibleYearsCOL: 5,
+    forwardYearsCOL: 5,
+    depreciation: {
+      buildings: { initialAllowInitYr: 0, initialAllowFinalYr: 0, initialAllowRate: 0, adjBase: 0, method: 1, rate: 0.05, life: 30, switchover: 0, ecDeprRate: 0.036 },
+      me:        { initialAllowInitYr: 0, initialAllowFinalYr: 0, initialAllowRate: 0, adjBase: 0, method: 1, rate: 0.20, life: 30, switchover: 0, ecDeprRate: 0.1225 },
+      vehicles:  { initialAllowInitYr: 0, initialAllowFinalYr: 0, initialAllowRate: 0, adjBase: 0, method: 1, rate: 0.20, life: 30, switchover: 0, ecDeprRate: 0.30 },
+      other:     { initialAllowInitYr: 0, initialAllowFinalYr: 0, initialAllowRate: 0, adjBase: 0, method: 1, rate: 0.0,  life: 30, switchover: 0, ecDeprRate: 0.0 },
+    },
+  },
+  unitedKingdom: { incomeTaxRate: 0.25, capGainsTaxRate: 0.25 },
+  unitedStates:  { incomeTaxRate: 0.2557, capGainsTaxRate: 0.2557 },
+
+  // ---- Other major economies (not OECD members) ----
+  china:        { incomeTaxRate: 0.25, capGainsTaxRate: 0.25 },
+  india:        { incomeTaxRate: 0.30, capGainsTaxRate: 0.30 },
+  brazil:       { incomeTaxRate: 0.34, capGainsTaxRate: 0.34 },
+  argentina:    { incomeTaxRate: 0.35, capGainsTaxRate: 0.35 },
+  southAfrica:  { incomeTaxRate: 0.27, capGainsTaxRate: 0.27 },
+  nigeria:      { incomeTaxRate: 0.30, capGainsTaxRate: 0.30 },
+  egypt:        { incomeTaxRate: 0.225, capGainsTaxRate: 0.225 },
+};
+
+function deepMerge(base, override) {
+  const result = Array.isArray(base) ? [...base] : { ...base };
+  for (const key in override) {
+    if (override[key] && typeof override[key] === 'object' && !Array.isArray(override[key])) {
+      result[key] = deepMerge(base[key] || {}, override[key]);
+    } else {
+      result[key] = override[key];
+    }
+  }
+  return result;
+}
+
+function loadScenario(name) {
+  const overrides = COUNTRY_SCENARIOS[name] || {};
+  state = deepMerge(defaultParams(), overrides);
+  buildPanelBody();   // formları yeni değerlerle baştan çiz
+  recalculate();
+}
+
+
+// ==== from calc-depreciation.js ====
+/* ============================================================================
+   Depreciation sub-block for one asset class (rows 114-126 pattern, repeated
+   for Buildings/M&E/Vehicles/Other at row offsets 114/128/142/156).
+   ========================================================================= */
+
+const N = 30;
+function arr() { return new Array(N + 1).fill(0); }
+
+function computeAssetDepreciation(origValue, C12, deprP, invDedProjP, invDedAssetP, itcProjP, itcAssetP, C74, C75, infl63) {
+  const grossValue = arr(), adjInvDedCred = arr(), initAllow = arr(), addToBasis = arr(),
+        declBalAdjBasis = arr(), declBalDep = arr(), switchoverAdj = arr(), strLineBasis = arr(),
+        strLineDep = arr(), expiredStrLineBasis = arr(), totalDep = arr();
+
+  const G = deprP.G, H = deprP.H, I = deprP.I, J = deprP.J, K = deprP.K, F = deprP.F, Cinit = deprP.C, D = deprP.D, E = deprP.E;
+
+  grossValue[0] = origValue;
+  const switchYr = J === 1 ? TRUNC(I + 1 - 1 / H) : I;
+
+  function inWin(t, lo, hi) { return !(t < lo || t > hi); }
+
+  // Pass 1: gross value, inv-ded/ITC adjustment, initial allowance, addToBasis
+  for (let t = 1; t <= N; t++) {
+    grossValue[t] = C12 * grossValue[0] * K * infl63[t];
+    const w = (inWin(t, invDedProjP.initYr, invDedProjP.finalYr) ? invDedProjP.rate : 0)
+            + (inWin(t, invDedAssetP.initYr, invDedAssetP.finalYr) ? invDedAssetP.rate : 0)
+            + (inWin(t, itcProjP.initYr, itcProjP.finalYr) ? itcProjP.rate : 0)
+            + (inWin(t, itcAssetP.initYr, itcAssetP.finalYr) ? itcAssetP.rate : 0);
+    adjInvDedCred[t] = grossValue[t] * w;
+    initAllow[t] = (grossValue[t - 1] - adjInvDedCred[t - 1]) * C75 * (inWin(t - 1, D, E) ? Cinit : 0);
+    addToBasis[t] = (grossValue[t - 1] - adjInvDedCred[t - 1]) * C75 - initAllow[t] * F;
+  }
+
+  // Pass 2: switchover flow (depends only on addToBasis history), then declining balance
+  for (let t = 1; t <= N; t++) {
+    let swVal = 0;
+    if (t > switchYr) {
+      const idx = t - switchYr;
+      const histVal = (idx >= 0 && idx <= N) ? addToBasis[idx] : 0;
+      swVal = histVal * Math.pow(C74, switchYr) * Math.pow(1 - H, switchYr);
+    }
+    switchoverAdj[t] = swVal * J;
+    declBalAdjBasis[t] = G * ((declBalAdjBasis[t - 1] - declBalDep[t - 1]) * C74 + addToBasis[t] - switchoverAdj[t]);
+    declBalDep[t] = H * declBalAdjBasis[t];
+  }
+
+  // Pass 3: expired straight-line basis (depends on addToBasis & switchoverAdj history), then SL basis/dep, total dep
+  for (let t = 1; t <= N; t++) {
+    let expVal = 0;
+    if (t > I) {
+      const idx1 = t - I;
+      const histAdd = (idx1 >= 0 && idx1 <= N) ? addToBasis[idx1] : 0;
+      const term1 = (1 - G) * histAdd * Math.pow(C74, I);
+      const idx2 = switchYr + (t - I);
+      const histSw = (idx2 >= 0 && idx2 <= N) ? switchoverAdj[idx2] : 0;
+      const term2 = J * histSw * Math.pow(C74, I - switchYr);
+      expVal = term1 + term2;
+    }
+    expiredStrLineBasis[t] = expVal;
+    strLineBasis[t] = strLineBasis[t - 1] * C74 + (1 - G) * addToBasis[t] + switchoverAdj[t] - expiredStrLineBasis[t];
+    const slRate = J === 1 ? 1 / (I - switchYr) : H;
+    strLineDep[t] = slRate * strLineBasis[t];
+    totalDep[t] = initAllow[t] + declBalDep[t] + strLineDep[t];
+  }
+
+  return { grossValue, adjInvDedCred, initAllow, addToBasis, declBalAdjBasis, declBalDep,
+           switchoverAdj, strLineBasis, strLineDep, expiredStrLineBasis, totalDep, switchYr };
+}
+
+
+
+// ==== from calc-cashflow.js ====
+/* ============================================================================
+   computeAll(params) — cash-flow + tax engine.
+   Internal representation: `R` is a map from Excel row-number -> array[0..N],
+   mirroring the spreadsheet directly (R[10][t] === cell "<col>10" at year t).
+   This keeps every line traceable 1:1 back to the workbook.
+   ========================================================================= */
+
+
+function inWin(t, lo, hi) { return !(t < lo || t > hi); }
+
+function computeAll(p) {
+  const R = {}; // R[rowNumber] = array(N+1)
+  function row(n) { if (!R[n]) R[n] = arr(); return R[n]; }
+
+  // ---------------------------------------------------------------------
+  // Scalar parameters (Excel cell aliases for traceability)
+  // ---------------------------------------------------------------------
+  const C4 = p.origInvestment, C6 = p.shareLand, C7 = p.shareBuildings, C8 = p.shareME, C9 = p.shareVehicles, C10 = p.shareOther;
+  const C12 = p.replaceOrigInvest, C15 = p.realBeforeTaxROR, C16 = p.wagesPctOpInc, C17 = p.materialsPctOpInc;
+  const C18 = p.operatingPeriod, C19 = p.retainedEarnPctATInc, C20 = p.pctSaleYearProceeds;
+  const C24 = p.debtPctOrigInv, C25 = p.constantDE, C26 = p.yearsInterestOnly, C27 = p.loanTerm, C30 = p.intRateOnDebt;
+  const C32 = p.inflationRate;
+
+  const G4 = p.incomeTaxRate, G5 = p.surtaxRate, G6 = p.surtaxYears, G7 = p.minTaxPctRev, G8 = p.minTaxIncPctRev, G9 = p.minTaxIncPctAssets;
+  const G12 = p.deductWages, G13 = p.deductMaterials, G14 = p.deductDepreciation;
+  const G15 = p.indexDepreciation, G16 = p.adjustInvForLag, G17 = p.rateOfIndexationDepr ?? C32;
+  const G21 = p.deductInterestPaid, G22 = p.indexInterestPaid, G23 = p.rateOfIndexationInt ?? C32, G24 = p.deductPmtsOnPrincipal;
+  const G31 = p.capLossOffset, G32 = p.balancingAdjOption;
+  const G27 = p.capGainsTaxRate, G28 = p.capGainsOption, G29 = p.indexCGBase, G30 = p.rateOfIndexationCG ?? C32;
+
+  const K4 = p.fullLossOffset, K5 = p.carryOverLosses, K6 = p.shrEligibleCOL, K7 = p.indexCOL, K8 = p.rateOfIndexationCOL ?? C32;
+  const K9 = p.eligibleYearsCOL, K10 = p.forwardYearsCOL, K11 = p.exemptYearsHoliday;
+  const K13 = p.creditsRedeemable, K14 = p.carryOverCredits, K15 = p.indexCOC, K16 = p.rateOfIndexationCOC ?? C32;
+  const K17 = p.eligibleYearsCOC, K18 = p.forwardYearsCOC;
+  const K21 = p.deductDividends, K22 = p.dividendTaxCredit, K23 = p.corpIncTaxCredit, K24 = p.corpIncTaxOffset, K25 = p.limitPctDivd;
+  const K28 = p.deductRE, K29 = p.reTaxCredit, K31 = p.taxInterestEarned, K32 = p.indexIntEarned, K33 = p.rateOfIndexationIntEarned ?? C32;
+
+  const IT = p.importTax;
+  const O4 = IT.buildings.deductFromIncTax;
+  const O6 = IT.buildings.pctImported, O7 = IT.buildings.rate, O8 = IT.buildings.exemptionRate, O9 = IT.buildings.exemptionPeriod;
+  const O11 = IT.me.pctImported, O12 = IT.me.rate, O13 = IT.me.exemptionRate, O14 = IT.me.exemptionPeriod;
+  const O16 = IT.vehicles.pctImported, O17 = IT.vehicles.rate, O18 = IT.vehicles.exemptionRate, O19 = IT.vehicles.exemptionPeriod;
+  const O21 = IT.other.pctImported, O22 = IT.other.rate, O23 = IT.other.exemptionRate, O24 = IT.other.exemptionPeriod;
+  const M58 = p.itcAllowedAgainstImportDuty;
+  const O27 = p.cashFlowTax, O28 = p.excessProfitsTax, O29 = p.normProfPctAssets, O30 = p.propertyWealthTax;
+  const O31 = p.deductOtherTaxFromIncTax ?? 1; // O31 cell ("Deduct from IncTax?" under Other Taxes) — defaults to Yes
+  const O34 = p.persTaxOnDivds, O35 = p.persCGTaxRate, O36 = p.indexCGBasePersonal, O37 = p.rateOfIndexationPersCG ?? C32, O38 = p.capLossOffsetPersonal;
+
+  const C73 = 1 + C32;
+  const C74 = 1 + (G15 === 1 ? G17 : 0);
+  const C75 = 1 + (G16 === 1 ? G17 : 0);
+  const C76 = (G22 === 1 ? G23 : 0);
+  const C77 = (K32 === 1 ? K33 : 0);
+  const C78 = 1 + (G29 === 1 ? G30 : 0);
+  const C79 = 1 + (K7 === 1 ? K8 : 0);
+  const C80 = 1 + (K15 === 1 ? K16 : 0);
+  const C81 = 1 + (O36 === 1 ? O37 : 0);
+
+  const infl63 = arr(); infl63[0] = 1;
+  for (let t = 1; t <= N; t++) infl63[t] = infl63[t - 1] * C73;
+
+  function deprP(d) { return { C: d.initialAllowRate, D: d.initialAllowInitYr, E: d.initialAllowFinalYr, F: d.adjBase, G: d.method, H: d.rate, I: d.life, J: d.switchover, K: d.ecDeprRate }; }
+  const deprBuild = deprP(p.depreciation.buildings), deprME = deprP(p.depreciation.me), deprVeh = deprP(p.depreciation.vehicles), deprOther = deprP(p.depreciation.other);
+
+  const idProj = p.invDeduction.project, idLand = p.invDeduction.land, idBld = p.invDeduction.bld, idME = p.invDeduction.me, idVeh = p.invDeduction.veh, idOther = p.invDeduction.other;
+  const itcProj = p.itc.project, itcLand = p.itc.land, itcBld = p.itc.bld, itcME = p.itc.me, itcVeh = p.itc.veh, itcOther = p.itc.other;
+  function winP(o) { return { rate: o.rate, initYr: o.initYr, finalYr: o.finalYr }; }
+
+  const landValue0 = C4 * C6, bldValue0 = C4 * C7, meValue0 = C4 * C8, vehValue0 = C4 * C9, otherValue0 = C4 * C10;
+
+  const depB = computeAssetDepreciation(bldValue0, C12, deprBuild, winP(idProj), winP(idBld), winP(itcProj), winP(itcBld), C74, C75, infl63);
+  const depM = computeAssetDepreciation(meValue0, C12, deprME, winP(idProj), winP(idME), winP(itcProj), winP(itcME), C74, C75, infl63);
+  const depV = computeAssetDepreciation(vehValue0, C12, deprVeh, winP(idProj), winP(idVeh), winP(itcProj), winP(itcVeh), C74, C75, infl63);
+  const depO = computeAssetDepreciation(otherValue0, C12, deprOther, winP(idProj), winP(idOther), winP(itcProj), winP(itcOther), C74, C75, infl63);
+
+  // Rows 114/128/142/156 = gross value; 115/129/143/157 = adjInvDedCred; 124/138/152/166 = totalDep; 126/140/154/168 = adj value after dep
+  R[114] = depB.grossValue; R[115] = depB.adjInvDedCred; R[124] = depB.totalDep;
+  R[128] = depM.grossValue; R[129] = depM.adjInvDedCred; R[138] = depM.totalDep;
+  R[142] = depV.grossValue; R[143] = depV.adjInvDedCred; R[152] = depV.totalDep;
+  R[156] = depO.grossValue; R[157] = depO.adjInvDedCred; R[166] = depO.totalDep;
+
+  function adjValueAfterDep(dep, origVal) {
+    const out = arr(); out[0] = origVal;
+    for (let t = 1; t <= N; t++) out[t] = out[t - 1] * C78 + dep.grossValue[t] - dep.adjInvDedCred[t] - dep.totalDep[t];
+    return out;
+  }
+  R[126] = adjValueAfterDep(depB, bldValue0);
+  R[140] = adjValueAfterDep(depM, meValue0);
+  R[154] = adjValueAfterDep(depV, vehValue0);
+  R[168] = adjValueAfterDep(depO, otherValue0);
+
+  // Row 3: Investment Expenditures
+  R[3] = row(3); R[3][0] = C4;
+  for (let t = 1; t <= N; t++) R[3][t] = R[114][t] + R[128][t] + R[142][t] + R[156][t];
+
+  // Rows 71-76: asset price & sale price
+  const K42 = deprBuild.K, K43 = deprME.K, K44 = deprVeh.K, K45 = deprOther.K;
+  R[71] = row(71); R[72] = row(72); R[73] = row(73); R[74] = row(74); R[75] = row(75); R[76] = row(76);
+  R[71][0] = landValue0; R[72][0] = bldValue0; R[73][0] = meValue0; R[74][0] = vehValue0; R[75][0] = otherValue0;
+  R[76][0] = R[71][0] + R[72][0] + R[73][0] + R[74][0] + R[75][0];
+  for (let t = 1; t <= N; t++) {
+    R[71][t] = R[71][0] * infl63[t];
+    R[72][t] = R[72][0] * infl63[t] * (C12 === 1 ? 1 : Math.pow(1 - K42, t));
+    R[73][t] = R[73][0] * infl63[t] * (C12 === 1 ? 1 : Math.pow(1 - K43, t));
+    R[74][t] = R[74][0] * infl63[t] * (C12 === 1 ? 1 : Math.pow(1 - K44, t));
+    R[75][t] = R[75][0] * infl63[t] * (C12 === 1 ? 1 : Math.pow(1 - K45, t));
+    R[76][t] = R[71][t] + R[72][t] + R[73][t] + R[74][t] + R[75][t];
+  }
+
+  // Row 78: Orig & Repl Inv Cost
+  R[78] = row(78); R[78][0] = C4;
+  for (let t = 1; t <= N; t++) R[78][t] = R[78][t - 1] * C78 + R[3][t];
+
+  // Row 79: Adj. Basis for CG (Land)
+  function windowAdj(t, D, E, F, C) { return inWin(t, D, E) ? F * C : 0; }
+  R[79] = row(79);
+  {
+    const sub0 = windowAdj(0, idProj.initYr, idProj.finalYr, idProj.adjBases, idProj.rate)
+               + windowAdj(0, idLand.initYr, idLand.finalYr, idLand.adjBases, idLand.rate)
+               + windowAdj(0, itcProj.initYr, itcProj.finalYr, itcProj.adjBases, itcProj.rate)
+               + windowAdj(0, itcLand.initYr, itcLand.finalYr, itcLand.adjBases, itcLand.rate);
+    R[79][0] = landValue0 * (1 - sub0);
+  }
+  for (let t = 1; t <= N; t++) R[79][t] = R[79][t - 1] * C78;
+
+  // Row 80: Adj. Basis for CG (Total Inv.)
+  R[80] = row(80);
+  for (let t = 0; t <= N; t++) R[80][t] = R[126][t] + R[140][t] + R[154][t] + R[168][t] + R[79][t];
+
+  // Rows 64-65: cash flow / sale-year dummies
+  R[64] = row(64); R[65] = row(65);
+  for (let t = 0; t <= N; t++) { R[64][t] = t <= C18 ? 1 : 0; R[65][t] = t === C18 ? 1 : 0; }
+
+  // Row 69: Loan Balance
+  const C28 = C24 * C4;
+  const C29 = PMT(C30, C27 - (C25 === 0 ? C26 : 0), -C28);
+  R[69] = row(69); R[69][0] = C28;
+
+  // Row 8: Payments on Principal (needs loan balance recursively -> compute alongside row 69)
+  R[8] = row(8);
+  R[8][0] = -C28;
+  for (let t = 1; t <= N; t++) {
+    if (C25 === 0) {
+      R[8][t] = (t <= C26 || t > C27) ? 0 : (C29 - rowSafe(7, t));
+    }
+    // else-branch (constant D/E) handled after row7 is known; patched below.
+  }
+
+  // Row 7: Interest Paid on Debt = C30 * loanBalance[t-1]
+  R[7] = row(7);
+  R[7][0] = 0;
+  for (let t = 1; t <= N; t++) {
+    R[7][t] = C30 * R[69][t - 1];
+    if (C25 === 0) {
+      R[8][t] = (t <= C26 || t > C27) ? 0 : (C29 - R[7][t]);
+    } else {
+      R[8][t] = R[69][t - 1] - C24 * R[76][t];
+    }
+    R[69][t] = R[69][t - 1] - R[8][t];
+  }
+
+  function rowSafe(n, t) { return (R[n] && R[n][t] !== undefined) ? R[n][t] : 0; }
+
+  // Row 4: Investment Income
+  const E66 = Math.pow(1 + C15, C18);
+  const E68 = Math.pow(1 - K42, C18), E69 = Math.pow(1 - K43, C18), E70 = Math.pow(1 - K44, C18), E71 = Math.pow(1 - K45, C18);
+  const F67 = C6 * (E66 - 1) / (C15 * E66), G67c = C6;
+  const F68 = C7 * (E66 - E68) / ((C15 + K42) * E66), G68c = C7 * E68;
+  const F69 = C8 * (E66 - E69) / ((C15 + K43) * E66), G69c = C8 * E69;
+  const F70 = C9 * (E66 - E70) / ((C15 + K44) * E66), G70c = C9 * E70;
+  const F71 = C10 * (E66 - E71) / ((C15 + K45) * E66), G71c = C10 * E71;
+  const F72 = F67 + F68 + F69 + F70 + F71;
+  const G72 = (G67c + G68c + G69c + G70c + G71c) / E66;
+  const C62 = C73 * ((C15 + (C7 * K42 + C8 * K43 + C9 * K44 + C10 * K45)) * C4) / (1 - C16 - C17); // OPINC1
+  const C66 = C73 * C4 * (1 - G72) / (F72 * (1 - C16 - C17)); // OPINC2
+  const F140 = p.targetATROR, F144 = p.atrorTarget;
+  const F146 = (p.opIncStart ?? 34.4) + 0.1; // used only if F140=1
+
+  R[4] = row(4);
+  R[4][0] = 0;
+  const opIncSelected = F140 === 0 ? (C12 === 1 ? C62 : C66) : F146;
+  R[4][1] = opIncSelected;
+  for (let t = 2; t <= N; t++) R[4][t] = (R[76][t - 1] / R[76][t - 2]) * R[4][t - 1];
+  // NOTE: AE4 = (AD76/AC76)*AD4 generalizes to (R76[t-1]/R76[t-2])*R4[t-1]; but the spreadsheet's
+  // base case AD4 uses the OPINC formula directly (not a ratio), confirmed by the formula dump.
+
+  // Row 5/6: Wages, Materials = C16*row4 , C17*row4 (also defined at t=0 from row4[0]=0)
+  R[5] = row(5); R[6] = row(6);
+  for (let t = 0; t <= N; t++) { R[5][t] = C16 * R[4][t]; R[6][t] = C17 * R[4][t]; }
+
+  // Row 9: Net Rev from Sale of Assets = saleDummy * (salePrice - loanBalance)
+  R[9] = row(9);
+  for (let t = 0; t <= N; t++) R[9][t] = R[65][t] * (R[76][t] - R[69][t]);
+
+  // Row 10: BEFORE-TAX CASH FLOW
+  R[10] = row(10);
+  for (let t = 0; t <= N; t++) R[10][t] = -R[3][t] + R[4][t] - R[5][t] - R[6][t] - R[7][t] - R[8][t] + R[9][t];
+
+  // ---------------------------------------------------------------------
+  // Capital-gains option table (rows 82-85) needs sale price (76), orig/repl
+  // cost (78) and total adj. basis (80) which are already known for all t.
+  // ---------------------------------------------------------------------
+  R[82] = row(82); R[83] = row(83); R[84] = row(84); R[85] = row(85);
+  for (let t = 0; t <= N; t++) {
+    R[82][t] = R[65][t] === 1 ? R[76][t] - R[78][t] : 0;
+    R[83][t] = R[65][t] === 1 ? R[76][t] - R[80][t] : 0;
+    R[84][t] = R[65][t] === 1 ? MIN(R[78][t], R[76][t]) - R[80][t] : 0;
+  }
+  // CG option table lookup: VLOOKUP($G$28, $AC$82:$BG$84, t+1) means: look up row matching
+  // value G28 among the 3 stacked option rows {1,2,3} placed in rows 82,83,84 respectively,
+  // and return column (t+1) of that matching row. Since G28 in {0,1,2,3,4}, and rows 82/83/84
+  // correspond to options 2/3/4 (1 returns salePrice directly per the IF chain), map directly:
+  const G28cgopt = p.capGainsOption;
+  for (let t = 0; t <= N; t++) {
+    let cg = 0;
+    if (R[65][t] === 1) {
+      if (G28cgopt === 0) cg = 0;
+      else if (G28cgopt === 1) cg = R[76][t];
+      else if (G28cgopt === 2) cg = R[82][t];
+      else if (G28cgopt === 3) cg = R[83][t];
+      else if (G28cgopt === 4) cg = R[84][t];
+    }
+    R[85][t] = cg;
+  }
+
+  // Row 13: Taxable Interest on RE = K31*(K30 - C77) * AccumRE[t-1]  (AccumRE = row 61, computed further below but needed here at t-1)
+  // Row 61 has a forward recursive dependency on rows 48-60 of the SAME period, so we must
+  // interleave rows 12..61 inside a single per-period loop. Set up remaining row containers first.
+  for (const n of [12,13,14,15,16,17,18,19,20,21,22,23,24,26,28,30,31,32,34,35,36,37,38,39,40,
+                    42,43,44,46,48,49,50,51,52,53,54,56,58,59,60,61,
+                    87,89,91,92,93,94,95,97,98,99,100,101,103,104,105,107]) {
+    row(n);
+  }
+
+  const K30 = p.intRateOnRE ?? (C73v_placeholder());
+  function C73v_placeholder() { return C73 * (1 + C15) - 1; } // K30 default per AC30-cell formula in sheet
+
+  const G27v = G27, G31v = G31, G4v = G4;
+  const D83 = K11 + K10v(); function K10v() { return K10; }
+  const D86 = K9 + K10, D87v = K11 + K10;
+  const Q52 = p.taxHoliday.exemptionRate1, Q53 = p.taxHoliday.exemptionRate1, Q54 = p.taxHoliday.exemptionRate2, Q55 = p.taxHoliday.exemptionRate2;
+  // NOTE: Q52/Q53/Q54/Q55 in the sheet are: Q52=exemptionRate1, Q53=exemptPeriod2(years!),
+  // Q54=exemptionRate2, Q55=(blank). The real formula uses $Q$52 and $Q$55 as rate thresholds
+  // and $D$83 / $Q$52(as a YEAR) inconsistently in the original; we follow the literal cell refs:
+  const Q52cell = p.taxHoliday.exemptionRate1; // Q52
+  const Q53cell = p.taxHoliday.exemptPeriod2;  // Q53 (years, used as a threshold year in row32!)
+  const Q55cell = 0; // Q55 is blank in the source workbook (no third exemption rate)
+
+  // t = 0 boundary for rows that have explicit AC formulas different from the AD-pattern
+  R[12][0] = R[4][0];
+  R[13][0] = 0;
+  R[14][0] = 0;
+  R[15][0] = 0;
+  R[16][0] = G12 * R[5][0];
+  R[17][0] = G13 * R[6][0];
+  R[18][0] = 0;
+  R[19][0] = 0;
+  R[20][0] = idProj.rate * R[3][0] * (inWin(0, idProj.initYr, idProj.finalYr) ? 1 : 0);
+  R[21][0] = idLand.rate * landValue0 * C6_window(0) // placeholder resolved below
+           ;
+  function C6_window() { return 0; } // replaced inline below with full formula (kept for lint quiet)
+  R[21][0] = idLand.rate * (C4 * C6) * (inWin(0, idLand.initYr, idLand.finalYr) ? 1 : 0)
+           + idBld.rate * R[114][0] * (inWin(0, idBld.initYr, idBld.finalYr) ? 1 : 0)
+           + idME.rate * R[128][0] * (inWin(0, idME.initYr, idME.finalYr) ? 1 : 0)
+           + idVeh.rate * R[142][0] * (inWin(0, idVeh.initYr, idVeh.finalYr) ? 1 : 0)
+           + idOther.rate * R[156][0] * (inWin(0, idOther.initYr, idOther.finalYr) ? 1 : 0);
+  R[22][0] = 0;
+  R[39][0] = R[114][0] * O6 * O7 * (0 > O9 ? 1 : 1 - O8) + R[128][0] * O11 * O12 * (0 > O14 ? 1 : 1 - O13)
+           + R[142][0] * O16 * O17 * (0 > O19 ? 1 : 1 - O18) + R[156][0] * O21 * O22 * (0 > O24 ? 1 : 1 - O23);
+  R[38][0] = O30 * R[80][0];
+  R[23][0] = O4 * R[39][0] + O31 * R[38][0];
+  R[24][0] = 0;
+  R[26][0] = (R[12][0] + R[13][0] + R[14][0] + R[15][0]) - (R[16][0] + R[17][0] + R[18][0] + R[19][0] + R[20][0] + R[21][0] + R[22][0] + R[23][0] + R[24][0]);
+  R[107][0] = MAX(G8 * R[4][0], G9 * (R[79][0] + R[126][0] + R[140][0] + R[154][0] + R[168][0]));
+  R[28][0] = 0;
+  R[30][0] = K5 * MAX((R[107][0] - R[26][0]) * K6, 0) * (1 - K4);
+  R[31][0] = R[30][0];
+  R[32][0] = (R[26][0] + R[30][0] / (R[30][0] > 0 ? K6 : 1)) * 1; // AC32 has no IF(t<D83...) clause at t=0 in sheet (uses AC formula variant)
+  R[34][0] = K4 === 0 ? MAX(G4 * R[32][0], 0) : G4 * R[32][0];
+  R[35][0] = (0 <= G6 ? G5 * MAX(R[34][0], 0) : 0) + (R[34][0] < G7 * R[4][0] ? G7 * R[4][0] - MAX(R[34][0], 0) : 0);
+  R[36][0] = O27 * R[10][0];
+  R[37][0] = 0;
+  R[40][0] = R[34][0] + R[35][0] + R[36][0] + R[37][0] + R[38][0] + R[39][0];
+  R[42][0] = itcProj.rate * R[3][0] * (inWin(0, itcProj.initYr, itcProj.finalYr) ? 1 : 0);
+  R[43][0] = itcLand.rate * (C4 * C6) * (inWin(0, itcLand.initYr, itcLand.finalYr) ? 1 : 0)
+           + itcBld.rate * R[114][0] * (inWin(0, itcBld.initYr, itcBld.finalYr) ? 1 : 0)
+           + itcME.rate * R[128][0] * (inWin(0, itcME.initYr, itcME.finalYr) ? 1 : 0)
+           + itcVeh.rate * R[142][0] * (inWin(0, itcVeh.initYr, itcVeh.finalYr) ? 1 : 0)
+           + itcOther.rate * R[156][0] * (inWin(0, itcOther.initYr, itcOther.finalYr) ? 1 : 0);
+  R[44][0] = R[42][0] + R[43][0];
+  R[46][0] = R[10][0] - ((K4 === 1 || K13 === 1) ? (R[40][0] - R[44][0]) : MAX(R[40][0] - R[44][0], 0));
+  R[48][0] = MIN(R[46][0], 0);
+  R[49][0] = 0;
+  R[50][0] = (1 - (R[65][0] === 0 ? C19 : C20)) * (MAX(R[46][0], 0) + K23 * MAX(R[34][0], 0));
+  R[89][0] = 0;
+  R[51][0] = R[50][0] * K22 - MIN(K24 * MAX(R[34][0], 0) + 0, K25 * R[50][0]);
+  R[97][0] = MAX(R[40][0], 0) + MAX(R[51][0], 0) + MAX(0, 0);
+  R[98][0] = (K4 === 1 || K13 === 1) ? 0 : MAX(R[42][0] + R[43][0], 0) * K14;
+  R[99][0] = 0; // 0<K18 generally true -> 0
+  R[100][0] = MAX(R[97][0] - R[99][0], 0);
+  R[101][0] = R[100][0] === 0 ? R[99][0] - R[97][0] : 0;
+  R[103][0] = (K4 === 1 || K13 === 1) ? 0 : MAX(R[44][0] - MAX(R[40][0] - (M58 === 0 ? R[39][0] : 0), 0), 0);
+  R[52][0] = MIN(R[103][0], MAX(R[51][0], 0));
+  R[87][0] = R[48][0];
+  R[53][0] = O35 * (O38 === 1 ? (R[87][0] + R[49][0]) : MAX(R[87][0] + R[49][0], 0)) * R[65][0];
+  R[54][0] = O34 * MAX(R[50][0] - R[51][0] + R[52][0], 0);
+  R[56][0] = R[48][0] + R[49][0] + R[50][0] - R[51][0] + R[52][0] - R[53][0] - R[54][0];
+  R[58][0] = R[65][0] === 0 ? MAX(R[46][0] * C19, 0) : 0;
+  R[59][0] = MAX(R[58][0], 0) * K29;
+  R[104][0] = MAX(R[103][0] - MAX(R[51][0], 0), 0);
+  R[60][0] = MIN(R[104][0], R[59][0]);
+  R[61][0] = R[58][0] - R[59][0] + R[60][0];
+  R[105][0] = MAX(R[104][0] - MAX(R[59][0], 0), 0) - R[101][0];
+  R[91][0] = -MIN(0, R[30][0]);
+  R[92][0] = (0 === K11) ? MAX(R[30][0], 0) : 0;
+  R[93][0] = 0;
+  R[94][0] = MAX(R[91][0] - R[93][0], 0);
+  R[95][0] = R[94][0] === 0 ? (R[93][0] - R[91][0]) : 0;
+
+  // ---------------------------------------------------------------------
+  // Main per-period loop, t = 1..N. Order follows the dependency chain.
+  // ---------------------------------------------------------------------
+  for (let t = 1; t <= N; t++) {
+    R[12][t] = R[4][t];
+    R[13][t] = K31 * (K30 - C77) * R[61][t - 1];
+    R[14][t] = (G27v / (G4v === 0 ? 1 : G4v)) * ((G31v === 1 || K4 === 1) ? R[85][t] : MAX(R[85][t], 0));
+    R[15][t] = R[65][t] === 1 ? (G32 === 0 ? 0 : (G32 === 1 ? R[76][t] : balancingAdjLookup(G32, t))) : 0;
+    R[16][t] = G12 * R[5][t];
+    R[17][t] = G13 * R[6][t];
+    R[18][t] = G21 * (R[7][t] - C76 * R[69][t - 1]);
+    R[19][t] = G24 * MAX(0, R[8][t]);
+    R[20][t] = idProj.rate * R[3][t] * (inWin(t, idProj.initYr, idProj.finalYr) ? 1 : 0);
+    R[21][t] = idLand.rate * 0 /* AD-pattern has no land term except at t=0 in sheet */
+             + idBld.rate * R[114][t] * (inWin(t, idBld.initYr, idBld.finalYr) ? 1 : 0)
+             + idME.rate * R[128][t] * (inWin(t, idME.initYr, idME.finalYr) ? 1 : 0)
+             + idVeh.rate * R[142][t] * (inWin(t, idVeh.initYr, idVeh.finalYr) ? 1 : 0)
+             + idOther.rate * R[156][t] * (inWin(t, idOther.initYr, idOther.finalYr) ? 1 : 0);
+    R[22][t] = (K28 === 1 && R[65][t] === 0) ? MAX(C19 * R[10][t], 0) : 0;
+    R[39][t] = R[114][t] * O6 * O7 * (t > O9 ? 1 : 1 - O8) + R[128][t] * O11 * O12 * (t > O14 ? 1 : 1 - O13)
+             + R[142][t] * O16 * O17 * (t > O19 ? 1 : 1 - O18) + R[156][t] * O21 * O22 * (t > O24 ? 1 : 1 - O23);
+    R[38][t] = O30 * R[80][t];
+    R[23][t] = O4 * R[39][t] + O31 * R[38][t];
+    R[24][t] = G14 * (R[124][t] + R[138][t] + R[152][t] + R[166][t]);
+    R[26][t] = (R[12][t] + R[13][t] + R[14][t] + R[15][t]) - (R[16][t] + R[17][t] + R[18][t] + R[19][t] + R[20][t] + R[21][t] + R[22][t] + R[23][t] + R[24][t]);
+    R[107][t] = MAX(G8 * R[4][t], G9 * (R[79][t] + R[126][t] + R[140][t] + R[154][t] + R[168][t]));
+
+    R[30][t] = K5 * (MAX((R[107][t] - R[26][t]) * K6, t > K11 ? -R[31][t - 1] * C79 : 0)) * (1 - K4) + 1e-12;
+    R[31][t] = R[31][t - 1] * C79 + R[30][t] - R[95][t - 1];
+
+    const D83 = K11 + K10;
+    const useQwindow = t <= D83 && R[26][t] > 0;
+    const Q52cellv = p.taxHoliday.exemptionRate1, Q54cellv = p.taxHoliday.exemptionRate2, Q53cellv_yrs = p.taxHoliday.exemptPeriod2;
+    const exemptFrac = useQwindow ? (t <= Q53cellv_yrs ? 1 - Q52cellv : 1 - Q54cellv) : 1;
+    R[32][t] = (R[26][t] + R[30][t] / (R[30][t] > 0 ? K6 : 1)) * exemptFrac - R[28][t];
+    // R[28] (restricted deductions) depends on R26,R10,R50(prev),R28(prev?) - actually depends on AC28/AC50 (prev period) only -> safe to compute now:
+    R[28][t] = (K21 === 1 && R[26][t] > 0) ? MIN(R[26][t], (1 - (R[65][t] === 1 ? C20 : C19)) * R[10][t] - MAX(0, (R[28][t - 1] - R[50][t - 1]))) : 0;
+    // re-derive R32 now that R28[t] is known (R28 calc above used R28[t] before it was set; fix by recomputing once):
+    R[32][t] = (R[26][t] + R[30][t] / (R[30][t] > 0 ? K6 : 1)) * exemptFrac - R[28][t];
+
+    R[34][t] = K4 === 0 ? MAX(G4 * R[32][t], 0) : G4 * R[32][t];
+    R[35][t] = (t <= G6 ? G5 * MAX(R[34][t], 0) : 0) + (R[34][t] < G7 * R[4][t] ? G7 * R[4][t] - MAX(R[34][t], 0) : 0);
+    R[36][t] = O27 * R[10][t];
+    R[37][t] = O28 * MAX(R[26][t] - O29 * (R[80][t] + R[61][t - 1] - R[69][t]), 0);
+    R[40][t] = R[34][t] + R[35][t] + R[36][t] + R[37][t] + R[38][t] + R[39][t];
+
+    R[42][t] = itcProj.rate * R[3][t] * (inWin(t, itcProj.initYr, itcProj.finalYr) ? 1 : 0);
+    R[43][t] = itcBld.rate * R[114][t] * (inWin(t, itcBld.initYr, itcBld.finalYr) ? 1 : 0)
+             + itcME.rate * R[128][t] * (inWin(t, itcME.initYr, itcME.finalYr) ? 1 : 0)
+             + itcVeh.rate * R[142][t] * (inWin(t, itcVeh.initYr, itcVeh.finalYr) ? 1 : 0)
+             + itcOther.rate * R[156][t] * (inWin(t, itcOther.initYr, itcOther.finalYr) ? 1 : 0);
+    R[44][t] = R[105][t - 1] * K14 * C80 + R[42][t] + R[43][t];
+
+    R[46][t] = R[10][t] - ((K4 === 1 || K13 === 1) ? (R[40][t] - R[44][t]) : MAX(R[40][t] - R[44][t], 0));
+    R[48][t] = R[65][t] === 0 ? MIN(R[46][t] + (1 + K30) * R[61][t - 1], 0) : (R[46][t] > 0 ? C20 : 1) * R[46][t];
+    R[49][t] = R[65][t] === 0 ? 0 : (1 + K30) * R[61][t - 1];
+    R[50][t] = (1 - (R[65][t] === 0 ? C19 : C20)) * (MAX(R[46][t], 0) + K23 * MAX(R[34][t], 0));
+    R[89][t] = MAX(R[34][t] * K24 + R[89][t - 1] - K25 * MAX(R[50][t], 0), 0);
+    R[51][t] = R[50][t] * K22 - MIN(K24 * MAX(R[34][t], 0) + R[89][t - 1], K25 * R[50][t]);
+
+    R[97][t] = MAX(R[40][t], 0) + MAX(R[51][t], 0) + MAX(R[59][t - 1], 0);
+    R[98][t] = (K4 === 1 || K13 === 1) ? 0 : MAX(R[42][t] + R[43][t], 0) * K14;
+    R[99][t] = t < K18 ? 0 : R[98][t - K18] * Math.pow(C80, K18);
+    R[100][t] = MAX(R[100][t - 1] * C80 + R[97][t] - R[99][t], 0);
+    R[101][t] = R[100][t] === 0 ? (R[99][t] - R[100][t - 1] * C80 - R[97][t]) : 0;
+    R[103][t] = (K4 === 1 || K13 === 1) ? 0 : MAX(R[44][t] - MAX(R[40][t] - (M58 === 0 ? R[39][t] : 0), 0), 0);
+    R[52][t] = MIN(R[103][t], MAX(R[51][t], 0));
+
+    R[87][t] = R[87][t - 1] * C81 + R[48][t];
+    R[53][t] = O35 * (O38 === 1 ? (R[87][t] + R[49][t]) : MAX(R[87][t] + R[49][t], 0)) * R[65][t];
+    R[54][t] = O34 * MAX(R[50][t] - R[51][t] + R[52][t], 0);
+    R[56][t] = R[48][t] + R[49][t] + R[50][t] - R[51][t] + R[52][t] - R[53][t] - R[54][t];
+
+    R[58][t] = R[65][t] === 0 ? (R[46][t] > 0 ? R[46][t] * C19 + K30 * R[61][t - 1] : MAX(R[46][t] + K30 * R[61][t - 1], -R[61][t - 1])) : 0;
+    R[59][t] = MAX(R[58][t], 0) * K29;
+    R[104][t] = MAX(R[103][t] - MAX(R[51][t], 0), 0);
+    R[60][t] = MIN(R[104][t], R[59][t]);
+    R[61][t] = R[65][t] === 0 ? (R[61][t - 1] + R[58][t] - R[59][t] + R[60][t]) : 0;
+    R[105][t] = MAX(R[104][t] - MAX(R[59][t], 0), 0) - R[101][t];
+
+    R[91][t] = -MIN(0, R[30][t]);
+    R[92][t] = t > K11 ? MAX(R[30][t], 0) : 0;
+    R[93][t] = t < D87v ? 0 : R[92][t - K10] * Math.pow(C79, K10);
+    R[94][t] = MAX(R[94][t - 1] * C79 + R[91][t] - R[93][t], 0);
+    R[95][t] = R[94][t] === 0 ? (R[93][t] - R[94][t - 1] * C79 - R[91][t]) : 0;
+  }
+
+  function balancingAdjLookup(option, t) {
+    if (option === 2) return R[82][t];
+    if (option === 3) return R[83][t];
+    if (option === 4) return R[84][t];
+    return 0;
+  }
+
+  // ---------------------------------------------------------------------
+  // Row 66/67: Real Before/After-Tax Cash Flow (used directly for the IRR)
+  // ---------------------------------------------------------------------
+  R[66] = row(66); R[67] = row(67);
+  R[66][0] = R[10][0];
+  R[67][0] = R[56][0];
+  for (let t = 1; t <= N; t++) {
+    R[66][t] = R[64][t] * R[10][t] / infl63[t];
+    R[67][t] = R[64][t] * R[56][t] / infl63[t];
+  }
+
+  // ---------------------------------------------------------------------
+  // Rows 171-181: tax summary (PV of taxes paid)
+  // ---------------------------------------------------------------------
+  R[171] = row(171); R[172] = row(172); R[173] = row(173); R[174] = row(174); R[175] = row(175);
+  R[176] = row(176); R[177] = row(177); R[178] = row(178); R[179] = row(179); R[180] = row(180); R[181] = row(181);
+  for (let t = 0; t <= N; t++) {
+    R[171][t] = MAX(R[34][t] - R[44][t], 0);
+    R[172][t] = R[35][t];
+    R[173][t] = R[36][t];
+    R[174][t] = R[37][t];
+    R[175][t] = R[38][t];
+    R[176][t] = R[39][t];
+    R[177][t] = R[51][t] - R[52][t];
+    R[178][t] = R[59][t];
+    R[179][t] = R[85][t] * G27;
+    R[180][t] = MAX(R[171][t] - R[179][t], 0);
+    R[181][t] = R[171][t] + R[177][t] + R[176][t];
+  }
+
+  // ---------------------------------------------------------------------
+  // T-column results (IRR-based rates of return + METR)
+  // ---------------------------------------------------------------------
+  const btSeries = R[66].slice(0, N + 1);
+  const atSeries = R[67].slice(0, N + 1);
+  const btGuess = F140 === 0 ? C15 : (1 / G4) * F144;
+  const T6 = round4(IRR(btSeries, btGuess));
+  const atGuess = F140 === 0 ? (btSeries[0] !== 0 ? (R[66][0] / R[67][0]) * C15 : C15) : F144;
+  const T8 = round4(IRR(atSeries, atGuess));
+  const T5 = (1 + T6) * (1 + C32) - 1; // nominal before-tax
+  const T7 = (1 + T8) * (1 + C32) - 1; // nominal after-tax
+  const T11 = T6 !== 0 ? (T6 - T8) / T6 : null; // METR
+
+  // PV of tax paid (rows 15-19 in the results panel). NOTE: the original workbook's T15:T19
+  // formulas use a FIXED 10-year NPV window (AD..AM, i.e. t=1..10), not the full operating
+  // period — this is reproduced exactly here for fidelity to the source model.
+  const pvWindow = (r) => r.slice(1, 11); // t=1..10
+  const pvIncomeCGTax = NPV(C15, pvWindow(R[171]));
+  const pvCGTaxOnly = NPV(C15, pvWindow(R[179]));
+  const pvDividendTax = NPV(C15, pvWindow(R[177]));
+  const pvImportTax = R[176][0] + NPV(C15, pvWindow(R[176]));
+  const pvAllTaxes = R[181][0] + NPV(C15, pvWindow(R[181]));
+
+  function round4(x) { return Math.round(x * 10000) / 10000; }
+
+  return {
+    R,
+    results: {
+      btROR_real: T6, atROR_real: T8, btROR_nominal: T5, atROR_nominal: T7, metr: T11,
+      pvIncomeCGTax, pvCGTaxOnly, pvDividendTax, pvImportTax, pvAllTaxes,
+    },
+    scalars: { C4, C12, C15, C18, C28, C29, C73, C74, C75, C76, C77, C78, C79, C80, C81, infl63, depB, depM, depV, depO, F140, F144 },
+  };
+}
+
+
+/* ====================== UI LOGIC ====================== */
+/* ============================================================================
+   PANEL / FIELD DEFINITIONS
+   Each panel maps to a tab. Fields are declarative; the renderer builds the
+   form and reads values back into a params object matching defaultParams().
+   ========================================================================= */
+const PANELS = [
+  { id: 'investment', label: 'Investment', num: 'I' },
+  { id: 'income', label: 'Income Tax', num: 'II' },
+  { id: 'losses', label: 'Losses & Credits', num: 'III' },
+  { id: 'imports', label: 'Import Tax', num: 'IV' },
+  { id: 'depreciation', label: 'Depreciation', num: 'V' },
+  { id: 'incentives', label: 'Incentives', num: 'VI' },
+];
+
+let state = null; // current params object (mirrors defaultParams shape)
+
+function buildTabs() {
+  const tabRow = document.getElementById('tabRow');
+  tabRow.innerHTML = '';
+  PANELS.forEach((p, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'tab-btn' + (i === 0 ? ' active' : '');
+    btn.dataset.panel = p.id;
+    btn.innerHTML = `<span class="tab-num">${p.num}</span>${p.label}`;
+    btn.onclick = () => switchPanel(p.id);
+    tabRow.appendChild(btn);
+  });
+}
+
+function switchPanel(id) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.panel === id));
+  document.querySelectorAll('.panel-section').forEach(s => s.classList.toggle('active', s.id === 'panel-' + id));
+}
+
+/* ---------------------------------------------------------------------------
+   Field helpers: each field has a getter/setter pair bound to `state`.
+--------------------------------------------------------------------------- */
+function num(path) {
+  return {
+    get: () => getPath(state, path),
+    set: (v) => setPath(state, path, v),
+  };
+}
+function getPath(obj, path) { return path.split('.').reduce((o, k) => (o == null ? o : o[k]), obj); }
+function setPath(obj, path, val) {
+  const parts = path.split('.');
+  let o = obj;
+  for (let i = 0; i < parts.length - 1; i++) o = o[parts[i]];
+  o[parts[parts.length - 1]] = val;
+}
+
+function pctField(label, path, opts = {}) {
+  return { type: 'pct', label, path, ...opts };
+}
+function numField(label, path, opts = {}) {
+  return { type: 'num', label, path, ...opts };
+}
+function yesNoField(label, path, opts = {}) {
+  return { type: 'bool', label, path, ...opts };
+}
+function selectField(label, path, options, opts = {}) {
+  return { type: 'select', label, path, options, ...opts };
+}
+
+/* ---------------------------------------------------------------------------
+   Panel content builders. Each returns an HTML string AND registers fields
+   for two-way binding via a side-table collected during render.
+--------------------------------------------------------------------------- */
+let fieldRegistry = []; // [{path, type, el}]
+
+function renderField(f) {
+  const id = 'f_' + f.path.replace(/[.\[\]]/g, '_');
+  const val = getPath(state, f.path);
+  if (f.type === 'bool') {
+    return `
+      <div class="field-toggle">
+        <input type="checkbox" id="${id}" data-path="${f.path}" data-type="bool" ${val ? 'checked' : ''}>
+        <label for="${id}">${f.label}</label>
+      </div>`;
+  }
+  if (f.type === 'select') {
+    const opts = f.options.map(o => `<option value="${o.value}" ${String(o.value) === String(val) ? 'selected' : ''}>${o.label}</option>`).join('');
+    return `
+      <div class="field">
+        <label for="${id}">${f.label}</label>
+        <select id="${id}" data-path="${f.path}" data-type="select">${opts}</select>
+      </div>`;
+  }
+  const unit = f.type === 'pct' ? '%' : (f.unit || '');
+  const displayVal = f.type === 'pct' ? round2(val * 100) : val;
+  const step = f.type === 'pct' ? '0.1' : (f.step || '1');
+  return `
+    <div class="field">
+      <label for="${id}">${f.label} ${unit ? `<span class="unit">${unit}</span>` : ''}</label>
+      <input type="number" id="${id}" data-path="${f.path}" data-type="${f.type}" value="${displayVal}" step="${step}">
+    </div>`;
+}
+
+function round2(x) { return Math.round(x * 100) / 100; }
+
+function fieldGroup(label, fields) {
+  return `<div class="field-group"><p class="field-group-label">${label}</p><div class="field-grid">${fields.map(renderField).join('')}</div></div>`;
+}
+function sourceNote(panelId) {
+  const val = getPath(state, `sources.${panelId}`) || '';
+  return `
+    <div class="field-group source-note-group">
+      <p class="field-group-label">Source / citation for this panel</p>
+      <textarea class="source-note-input" data-source-panel="${panelId}" placeholder="e.g. OECD Corporate Tax Statistics 2025; national tax code article X; PwC Worldwide Tax Summaries...">${val}</textarea>
+    </div>`;
+}
+
+/* ---------------------------------------------------------------------------
+   PANEL I — Investment, Operation, Financing
+--------------------------------------------------------------------------- */
+function panelInvestment() {
+  return `
+    <p class="panel-title">Physical investment &amp; financing</p>
+    <p class="panel-desc">The size and shape of the project: how much is invested, in what kind of assets, how it's financed, and the inflation backdrop against which everything else is measured.</p>
+    ${fieldGroup('Original investment', [
+      numField('Total original investment', 'origInvestment', { unit: 'currency' }),
+      pctField('Share — Land', 'shareLand'),
+      pctField('Share — Buildings', 'shareBuildings'),
+      pctField('Share — Machinery &amp; equipment', 'shareME'),
+      pctField('Share — Vehicles', 'shareVehicles'),
+      pctField('Share — Other', 'shareOther'),
+      yesNoField('Replace original investment annually', 'replaceOrigInvest'),
+    ])}
+    ${fieldGroup('Operation', [
+      pctField('Real before-tax rate of return target', 'realBeforeTaxROR'),
+      pctField('Wages, % of operating income', 'wagesPctOpInc'),
+      pctField('Materials, % of operating income', 'materialsPctOpInc'),
+      numField('Operating period', 'operatingPeriod', { unit: 'years', step: '1' }),
+      pctField('Retained earnings, % of after-tax income', 'retainedEarnPctATInc'),
+      pctField('% of sale-year proceeds distributed', 'pctSaleYearProceeds'),
+      pctField('Inflation rate', 'inflationRate'),
+    ])}
+    ${fieldGroup('Financing', [
+      pctField('Debt, % of original investment', 'debtPctOrigInv'),
+      yesNoField('Hold debt/equity ratio constant', 'constantDE'),
+      numField('Years interest-only', 'yearsInterestOnly', { unit: 'years', step: '1' }),
+      numField('Loan term', 'loanTerm', { unit: 'years', step: '1' }),
+      pctField('Interest rate on debt', 'intRateOnDebt'),
+    ])}
+    ${sourceNote('investment')}
+  `;
+}
+
+/* ---------------------------------------------------------------------------
+   PANEL II — Income tax, capital gains, debt/dividend treatment
+--------------------------------------------------------------------------- */
+function panelIncome() {
+  return `
+    <p class="panel-title">Taxes on income</p>
+    <p class="panel-desc">The corporate income tax rate and its companions: surtaxes, minimum taxes, what's deductible, and how debt, dividends and capital gains are taxed.</p>
+    ${fieldGroup('Corporate income tax', [
+      pctField('Income tax rate', 'incomeTaxRate'),
+      pctField('Surtax rate', 'surtaxRate'),
+      numField('Surtax years', 'surtaxYears', { step: '1' }),
+      pctField('Minimum tax, % of revenue', 'minTaxPctRev'),
+      pctField('Minimum taxable income, % of revenue', 'minTaxIncPctRev'),
+      pctField('Minimum taxable income, % of assets', 'minTaxIncPctAssets'),
+    ])}
+    ${fieldGroup('Standard deductions', [
+      yesNoField('Deduct wages', 'deductWages'),
+      yesNoField('Deduct materials', 'deductMaterials'),
+      yesNoField('Deduct depreciation', 'deductDepreciation'),
+      yesNoField('Index depreciation for inflation', 'indexDepreciation'),
+    ])}
+    ${fieldGroup('Treatment of debt', [
+      yesNoField('Deduct interest paid', 'deductInterestPaid'),
+      yesNoField('Index interest paid', 'indexInterestPaid'),
+      yesNoField('Deduct payments on principal', 'deductPmtsOnPrincipal'),
+    ])}
+    ${fieldGroup('Capital gains', [
+      pctField('Capital gains tax rate', 'capGainsTaxRate'),
+      selectField('Capital gains base', 'capGainsOption', [
+        { value: 0, label: '0 — No tax on capital gains' },
+        { value: 1, label: '1 — Sale price of assets' },
+        { value: 2, label: '2 — Sale price − original cost' },
+        { value: 3, label: '3 — Sale price − tax basis' },
+        { value: 4, label: '4 — Min(sale, cost) − tax basis' },
+      ]),
+      yesNoField('Allow capital loss offset', 'capLossOffset'),
+    ])}
+    ${fieldGroup('Treatment of dividends', [
+      yesNoField('Deduct dividends at corporate level', 'deductDividends'),
+      pctField('Dividend withholding tax / credit', 'dividendTaxCredit'),
+    ])}
+    ${fieldGroup('Personal-level taxes (investor)', [
+      pctField('Personal tax on dividends', 'persTaxOnDivds'),
+      pctField('Personal capital gains tax rate', 'persCGTaxRate'),
+      yesNoField('Allow personal capital loss offset', 'capLossOffsetPersonal'),
+    ])}
+    ${sourceNote('income')}
+  `;
+}
+
+/* ---------------------------------------------------------------------------
+   PANEL III — Losses & credits, retained earnings
+--------------------------------------------------------------------------- */
+function panelLosses() {
+  return `
+    <p class="panel-title">Losses, credits &amp; retained earnings</p>
+    <p class="panel-desc">How the project carries tax losses and unused credits forward, and how retained earnings are taxed if the firm keeps cash inside the business.</p>
+    ${fieldGroup('Treatment of losses', [
+      yesNoField('Full loss offset (no carry-over needed)', 'fullLossOffset'),
+      yesNoField('Allow carry-over of losses', 'carryOverLosses'),
+      pctField('Share of losses eligible for carry-over', 'shrEligibleCOL'),
+      numField('Eligible years (loss carry-over)', 'eligibleYearsCOL', { step: '1' }),
+      numField('Forward years before expiry', 'forwardYearsCOL', { step: '1' }),
+      numField('Exempt years (tax holiday overlap)', 'exemptYearsHoliday', { step: '1' }),
+    ])}
+    ${fieldGroup('Treatment of credits', [
+      yesNoField('Credits redeemable in cash', 'creditsRedeemable'),
+      yesNoField('Allow carry-over of credits', 'carryOverCredits'),
+      numField('Eligible years (credit carry-over)', 'eligibleYearsCOC', { step: '1' }),
+      numField('Forward years before expiry', 'forwardYearsCOC', { step: '1' }),
+    ])}
+    ${fieldGroup('Retained earnings', [
+      yesNoField('Deduct retained earnings', 'deductRE'),
+      pctField('Tax/credit on retained earnings', 'reTaxCredit'),
+      yesNoField('Tax interest earned on retained earnings', 'taxInterestEarned'),
+    ])}
+    ${fieldGroup('Other taxes', [
+      pctField('Cash-flow tax', 'cashFlowTax'),
+      pctField('Excess profits tax', 'excessProfitsTax'),
+      pctField('"Normal" profit, % of assets (for excess-profits base)', 'normProfPctAssets'),
+      pctField('Property / wealth tax', 'propertyWealthTax'),
+    ])}
+    ${sourceNote('losses')}
+  `;
+}
+
+/* ---------------------------------------------------------------------------
+   PANEL IV — Import taxes (per asset class)
+--------------------------------------------------------------------------- */
+function panelImports() {
+  const assets = [
+    { key: 'buildings', label: 'Buildings' },
+    { key: 'me', label: 'Machinery &amp; equipment' },
+    { key: 'vehicles', label: 'Vehicles' },
+    { key: 'other', label: 'Other' },
+  ];
+  const rows = assets.map(a => `
+    <tr>
+      <td>${a.label}</td>
+      <td><input type="number" step="0.1" data-path="importTax.${a.key}.pctImported" data-type="pct" value="${round2(getPath(state, `importTax.${a.key}.pctImported`) * 100)}"></td>
+      <td><input type="number" step="0.1" data-path="importTax.${a.key}.rate" data-type="pct" value="${round2(getPath(state, `importTax.${a.key}.rate`) * 100)}"></td>
+      <td><input type="number" step="0.1" data-path="importTax.${a.key}.exemptionRate" data-type="pct" value="${round2(getPath(state, `importTax.${a.key}.exemptionRate`) * 100)}"></td>
+      <td><input type="number" step="1" data-path="importTax.${a.key}.exemptionPeriod" data-type="num" value="${getPath(state, `importTax.${a.key}.exemptionPeriod`)}"></td>
+    </tr>`).join('');
+  return `
+    <p class="panel-title">Import taxes</p>
+    <p class="panel-desc">Tariffs on imported capital goods, asset by asset — the share imported, the duty rate, and any exemption window.</p>
+    <table class="asset-table">
+      <thead><tr><th>Asset</th><th>% Imported</th><th>Duty rate %</th><th>Exemption %</th><th>Exempt yrs</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    ${fieldGroup('Treatment', [
+      yesNoField('Deduct import duty from income tax base', 'importTax.buildings.deductFromIncTax'),
+      yesNoField('Investment tax credits allowed against import duty', 'itcAllowedAgainstImportDuty'),
+    ])}
+    ${sourceNote('imports')}
+  `;
+}
+
+/* ---------------------------------------------------------------------------
+   PANEL V — Depreciation
+--------------------------------------------------------------------------- */
+function panelDepreciation() {
+  const assets = [
+    { key: 'buildings', label: 'Buildings' },
+    { key: 'me', label: 'Machinery &amp; equipment' },
+    { key: 'vehicles', label: 'Vehicles' },
+    { key: 'other', label: 'Other' },
+  ];
+  const rows = assets.map(a => {
+    const base = `depreciation.${a.key}`;
+    return `
+    <tr>
+      <td>${a.label}</td>
+      <td>
+        <select data-path="${base}.method" data-type="num">
+          <option value="0" ${getPath(state, base + '.method') === 0 ? 'selected' : ''}>Straight-line</option>
+          <option value="1" ${getPath(state, base + '.method') === 1 ? 'selected' : ''}>Declining balance</option>
+        </select>
+      </td>
+      <td><input type="number" step="0.1" data-path="${base}.rate" data-type="pct" value="${round2(getPath(state, base + '.rate') * 100)}"></td>
+      <td><input type="number" step="1" data-path="${base}.life" data-type="num" value="${getPath(state, base + '.life')}"></td>
+      <td>
+        <select data-path="${base}.switchover" data-type="num">
+          <option value="0" ${getPath(state, base + '.switchover') === 0 ? 'selected' : ''}>No</option>
+          <option value="1" ${getPath(state, base + '.switchover') === 1 ? 'selected' : ''}>Yes</option>
+        </select>
+      </td>
+      <td><input type="number" step="0.1" data-path="${base}.ecDeprRate" data-type="pct" value="${round2(getPath(state, base + '.ecDeprRate') * 100)}"></td>
+    </tr>`;
+  }).join('');
+  return `
+    <p class="panel-title">Depreciation</p>
+    <p class="panel-desc">Tax depreciation method and rate for each asset class, plus the true economic depreciation rate used to track each asset's market value over time.</p>
+    <table class="asset-table">
+      <thead><tr><th>Asset</th><th>Method</th><th>Tax rate %</th><th>Life (yrs)</th><th>Switch to SL</th><th>Econ. depr. %</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    ${fieldGroup('Indexation', [
+      yesNoField('Index depreciation base for inflation', 'indexDepreciation'),
+      yesNoField('Adjust investment timing for lag', 'adjustInvForLag'),
+    ])}
+    ${sourceNote('depreciation')}
+  `;
+}
+
+/* ---------------------------------------------------------------------------
+   PANEL VI — Incentives (investment deductions, ITC, tax holiday)
+--------------------------------------------------------------------------- */
+function panelIncentives() {
+  const idAssets = [
+    { key: 'project', label: 'Whole project' },
+    { key: 'land', label: 'Land' },
+    { key: 'bld', label: 'Buildings' },
+    { key: 'me', label: 'Machinery &amp; equipment' },
+    { key: 'veh', label: 'Vehicles' },
+  ];
+  const idRows = idAssets.map(a => `
+    <tr>
+      <td>${a.label}</td>
+      <td><input type="number" step="0.1" data-path="invDeduction.${a.key}.rate" data-type="pct" value="${round2(getPath(state, `invDeduction.${a.key}.rate`) * 100)}"></td>
+      <td><input type="number" step="1" data-path="invDeduction.${a.key}.initYr" data-type="num" value="${getPath(state, `invDeduction.${a.key}.initYr`)}"></td>
+      <td><input type="number" step="1" data-path="invDeduction.${a.key}.finalYr" data-type="num" value="${getPath(state, `invDeduction.${a.key}.finalYr`)}"></td>
+    </tr>`).join('');
+  const itcRows = idAssets.map(a => `
+    <tr>
+      <td>${a.label}</td>
+      <td><input type="number" step="0.1" data-path="itc.${a.key}.rate" data-type="pct" value="${round2(getPath(state, `itc.${a.key}.rate`) * 100)}"></td>
+      <td><input type="number" step="1" data-path="itc.${a.key}.initYr" data-type="num" value="${getPath(state, `itc.${a.key}.initYr`)}"></td>
+      <td><input type="number" step="1" data-path="itc.${a.key}.finalYr" data-type="num" value="${getPath(state, `itc.${a.key}.finalYr`)}"></td>
+    </tr>`).join('');
+  return `
+    <p class="panel-title">Investment incentives</p>
+    <p class="panel-desc">Upfront deductions, tax credits, and a tax holiday — the policy levers governments pull to lower a project's effective tax rate.</p>
+    <p class="field-group-label" style="margin-top:0">Investment deductions</p>
+    <table class="asset-table">
+      <thead><tr><th>Base</th><th>Rate %</th><th>From yr</th><th>To yr</th></tr></thead>
+      <tbody>${idRows}</tbody>
+    </table>
+    <p class="field-group-label" style="margin-top:20px">Investment tax credits</p>
+    <table class="asset-table">
+      <thead><tr><th>Base</th><th>Rate %</th><th>From yr</th><th>To yr</th></tr></thead>
+      <tbody>${itcRows}</tbody>
+    </table>
+    ${fieldGroup('Tax holiday', [
+      numField('Exempt period 1', 'taxHoliday.exemptPeriod1', { unit: 'years', step: '1' }),
+      pctField('Exemption rate, period 1', 'taxHoliday.exemptionRate1'),
+      numField('Exempt period 2 (cumulative, yrs)', 'taxHoliday.exemptPeriod2', { unit: 'years', step: '1' }),
+      pctField('Exemption rate, period 2', 'taxHoliday.exemptionRate2'),
+    ])}
+    ${sourceNote('incentives')}
+  `;
+}
+
+const PANEL_RENDERERS = {
+  investment: panelInvestment,
+  income: panelIncome,
+  losses: panelLosses,
+  imports: panelImports,
+  depreciation: panelDepreciation,
+  incentives: panelIncentives,
+};
+
+function buildPanelBody() {
+  const body = document.getElementById('panelBody');
+  body.innerHTML = PANELS.map((p, i) =>
+    `<div class="panel-section${i === 0 ? ' active' : ''}" id="panel-${p.id}">${PANEL_RENDERERS[p.id]()}</div>`
+  ).join('');
+  attachFieldListeners();
+}
+
+function attachFieldListeners() {
+  document.querySelectorAll('[data-path]').forEach(el => {
+    const isSelectOrCheckbox = el.tagName === 'SELECT' || el.type === 'checkbox';
+
+    // Select ve checkbox zaten "change" ile anında tetiklenir, sorun yok.
+    // Number/text input'lar için artık "change" kullanıyoruz (blur veya Enter'da tetiklenir).
+    const evt = 'change';
+    el.addEventListener(evt, () => commitField(el));
+
+    // Enter'a basıldığında inputtan çıkmış gibi davransın (blur tetikler -> change tetiklenir)
+    if (!isSelectOrCheckbox) {
+      el.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          el.blur(); // blur, "change" event'ini otomatik tetikler
+        }
+      });
+    }
+  });
+  document.querySelectorAll('[data-source-panel]').forEach(el => {
+    el.addEventListener('change', () => {
+      const panelId = el.dataset.sourcePanel;
+      setPath(state, `sources.${panelId}`, el.value);
+    });
+  });
+}
+
+function commitField(el) {
+  const path = el.dataset.path;
+  const type = el.dataset.type;
+  const oldVal = getPath(state, path);
+
+  // Boş bırakıldıysa: eski değere geri dön, hesaplama tetiklenmesin
+  if (el.value === '' || el.value === null) {
+    revertField(el, type, oldVal);
+    return;
+  }
+
+  let val;
+  if (type === 'bool') val = el.checked ? 1 : 0;
+  else if (type === 'pct') val = parseFloat(el.value) / 100;
+  else if (type === 'select') val = isNaN(Number(el.value)) ? el.value : Number(el.value);
+  else val = parseFloat(el.value);
+
+  // Geçersiz bir sayı (örn. "abc") yazıldıysa da eski değere dön
+  if (typeof val === 'number' && isNaN(val)) {
+    revertField(el, type, oldVal);
+    return;
+  }
+
+  setPath(state, path, val);
+  recalculate();
+}
+
+function revertField(el, type, oldVal) {
+  if (type === 'pct') el.value = round2(oldVal * 100);
+  else el.value = oldVal;
+}
+/* ============================================================================
+   RECALCULATION + RESULT RENDERING
+   ========================================================================= */
+function fmtPct(x, digits = 2) {
+  if (x === null || x === undefined || !isFinite(x)) return '—';
+  return (x * 100).toFixed(digits) + '%';
+}
+function fmtNum(x, digits = 2) {
+  if (x === null || x === undefined || !isFinite(x)) return '—';
+  return x.toFixed(digits);
+}
+
+function recalculate() {
+  let result;
+  try {
+    result = computeAll(state);
+  } catch (e) {
+    console.error('METR calculation error:', e);
+    document.getElementById('metrValue').innerHTML = '—<span class="pct">%</span>';
+    document.getElementById('metrCaption').textContent = 'Could not compute — check the values you just entered.';
+    return;
+  }
+  const r = result.results;
+  const metrPct = r.metr === null ? null : r.metr * 100;
+
+  const metrEl = document.getElementById('metrValue');
+  metrEl.innerHTML = (metrPct === null ? '—' : metrPct.toFixed(1)) + '<span class="pct">%</span>';
+  metrEl.style.color = metrPct !== null && metrPct < 0 ? 'var(--red)' : '';
+
+  const wedgeDesc = r.metr === null
+    ? 'Set your parameters to see the wedge between before- and after-tax returns.'
+    : (r.metr < 0
+        ? `Taxes <b>more than wipe out</b> the return: a subsidy effect, with the after-tax return exceeding the before-tax return.`
+        : `Of every unit of pre-tax return, <b>${fmtPct(r.metr, 1)}</b> is absorbed by tax before it reaches the investor.`);
+  document.getElementById('metrCaption').innerHTML = wedgeDesc;
+
+  document.getElementById('statBTROR').textContent = fmtPct(r.btROR_real);
+  document.getElementById('statATROR').textContent = fmtPct(r.atROR_real);
+  document.getElementById('statBTROR_n').textContent = fmtPct(r.btROR_nominal);
+  document.getElementById('statATROR_n').textContent = fmtPct(r.atROR_nominal);
+
+  renderWedge(r.btROR_real, r.atROR_real);
+  renderCashflowChart(result.R[66], result.R[67], state.operatingPeriod);
+  renderPVList(r);
+}
+
+function renderPVList(r) {
+  const items = [
+    ['Income &amp; capital-gains tax', r.pvIncomeCGTax],
+    ['— of which, capital gains tax', r.pvCGTaxOnly],
+    ['Dividend tax (after credits)', r.pvDividendTax],
+    ['Import taxes', r.pvImportTax],
+    ['All taxes, combined', r.pvAllTaxes],
+  ];
+  document.getElementById('pvList').innerHTML = items.map(([label, val]) =>
+    `<li><span class="pv-label">${label}</span><span class="pv-value">${fmtNum(val)}</span></li>`
+  ).join('');
+}
+
+/* ---------------------------------------------------------------------------
+   Wedge visualization: two horizontal bars (before-tax / after-tax ROR) with
+   the gap between them shaded as the "tax wedge". Pure inline SVG.
+--------------------------------------------------------------------------- */
+function renderWedge(bt, at) {
+  renderWedgeInto('wedgeViz', bt, at);
+}
+
+function renderWedgeInto(targetId, bt, at, sizeOverride) {
+  const el = document.getElementById(targetId);
+    if (bt === null || at === null || !isFinite(bt) || !isFinite(at)) { el.innerHTML = ''; return; }
+  const maxVal = Math.max(Math.abs(bt), Math.abs(at), 0.01) * 1.25;
+  const w = sizeOverride ? sizeOverride.w : 520, h = sizeOverride ? sizeOverride.h : 130, midY = h / 2, padX = 14;
+  const scale = (w - padX * 2) / (maxVal * 2);
+  const zeroX = padX + maxVal * scale;
+  const btX = zeroX + bt * scale;
+  const atX = zeroX + at * scale;
+  const barY1 = 26, barY2 = 76, barH = 26;
+  const lo = Math.min(btX, atX), hi = Math.max(btX, atX);
+
+el.innerHTML = `
+  <svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}" role="img" aria-label="Tax wedge between before- and after-tax returns">
+    <line x1="${zeroX}" y1="6" x2="${zeroX}" y2="${h-16}" stroke="rgba(244,239,227,0.18)" stroke-width="1"/>
+    <rect x="${lo}" y="${barY1 - 2}" width="${hi - lo}" height="${barY2 - barY1 + barH + 4}" fill="var(--gold)" opacity="0.10"/>
+    <rect x="${Math.min(zeroX, btX)}" y="${barY1}" width="${Math.abs(btX - zeroX)}" height="${barH}" rx="3" fill="var(--gold)"/>
+    <text x="${btX + (btX >= zeroX ? 10 : -10)}" y="${barY1 + barH/2 + 5}" font-family="IBM Plex Mono, monospace" font-size="14" font-weight="600" fill="#F4EFE3" text-anchor="${btX >= zeroX ? 'start' : 'end'}">${fmtPct(bt,1)}</text>
+    <rect x="${Math.min(zeroX, atX)}" y="${barY2}" width="${Math.abs(atX - zeroX)}" height="${barH}" rx="3" fill="rgba(244,239,227,0.65)"/>
+    <text x="${atX + (atX >= zeroX ? 10 : -10)}" y="${barY2 + barH/2 + 5}" font-family="IBM Plex Mono, monospace" font-size="14" font-weight="600" fill="#F4EFE3" text-anchor="${atX >= zeroX ? 'start' : 'end'}">${fmtPct(at,1)}</text>
+    <text x="${padX}" y="${h-2}" font-family="IBM Plex Mono, monospace" font-size="10" fill="rgba(244,239,227,0.45)">BEFORE-TAX (GOLD) · AFTER-TAX (PALE)</text>
+  </svg>`;
+}
+/* ---------------------------------------------------------------------------
+   Cash-flow line chart: simple inline SVG, no dependencies.
+--------------------------------------------------------------------------- */
+function renderCashflowChart(btRow, atRow, years) {
+  renderCashflowChartInto('cashflowChart', btRow, atRow, years);
+}
+
+function renderCashflowChartInto(targetId, btRow, atRow, years, sizeOverride) {
+  const el = document.getElementById(targetId);
+  const n = Math.min(years, 30);
+  const bt = btRow.slice(0, n + 1), at = atRow.slice(0, n + 1);
+  const allVals = bt.concat(at).filter(v => isFinite(v));
+  const maxV = Math.max(...allVals, 0), minV = Math.min(...allVals, 0);
+  const w = sizeOverride ? sizeOverride.w : 1100, h = sizeOverride ? sizeOverride.h : 280;
+  const padL = 60, padR = 30, padT = 20, padB = 32;
+  const plotW = w - padL - padR, plotH = h - padT - padB;
+  const xFor = (i) => padL + (i / n) * plotW;
+  const yFor = (v) => padT + (1 - (v - minV) / (maxV - minV || 1)) * plotH;
+  const zeroY = yFor(0);
+
+  function pathFor(arr) {
+    return arr.map((v, i) => `${i === 0 ? 'M' : 'L'} ${xFor(i).toFixed(1)} ${yFor(v).toFixed(1)}`).join(' ');
+  }
+
+  const gridLines = [];
+  const steps = 4;
+  for (let i = 0; i <= steps; i++) {
+    const v = minV + (maxV - minV) * (i / steps);
+    const y = yFor(v);
+    gridLines.push(`<line x1="${padL}" y1="${y.toFixed(1)}" x2="${w - padR}" y2="${y.toFixed(1)}" stroke="#D9CFB6" stroke-width="1"/>`);
+    gridLines.push(`<text x="${padL - 8}" y="${(y + 3).toFixed(1)}" font-family="IBM Plex Mono, monospace" font-size="9" fill="#8B8674" text-anchor="end">${v.toFixed(0)}</text>`);
+  }
+
+  const xTicks = [];
+  const tickStep = n > 20 ? 5 : (n > 10 ? 2 : 1);
+  for (let i = 0; i <= n; i += tickStep) {
+    xTicks.push(`<text x="${xFor(i).toFixed(1)}" y="${h - 8}" font-family="IBM Plex Mono, monospace" font-size="9" fill="#8B8674" text-anchor="middle">${i}</text>`);
+  }
+
+  // markers at each year for both series (small dots) to keep the line legible even when flat
+  function dotsFor(arr, color) {
+    return arr.map((v, i) => `<circle cx="${xFor(i).toFixed(1)}" cy="${yFor(v).toFixed(1)}" r="1.6" fill="${color}"/>`).join('');
+  }
+
+  el.innerHTML = `
+  <svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}" role="img" aria-label="Cash flow by year">
+    ${gridLines.join('')}
+    <line x1="${padL}" y1="${zeroY.toFixed(1)}" x2="${w-padR}" y2="${zeroY.toFixed(1)}" stroke="#8B8674" stroke-width="1"/>
+    <path d="${pathFor(bt)}" fill="none" stroke="#C9A24B" stroke-width="2"/>
+    ${dotsFor(bt, '#C9A24B')}
+    <path d="${pathFor(at)}" fill="none" stroke="#15303F" stroke-width="2" stroke-dasharray="4 3"/>
+    ${dotsFor(at, '#15303F')}
+    ${xTicks.join('')}
+    <text x="${w - padR}" y="${padT + 10}" font-family="IBM Plex Mono, monospace" font-size="9.5" fill="#9C7E3D" text-anchor="end">before-tax</text>
+    <text x="${w - padR}" y="${padT + 22}" font-family="IBM Plex Mono, monospace" font-size="9.5" fill="#15303F" text-anchor="end">after-tax (dashed)</text>
+    <text x="${padL}" y="${h - 8}" font-family="IBM Plex Mono, monospace" font-size="8.5" fill="#8B8674">yr</text>
+  </svg>`;
+}
+
+/* ============================================================================
+   REPORT GENERATION
+   ========================================================================= */
+const REPORT_PARAM_GROUPS = [
+  {
+    title: 'Investment',
+    fields: [
+      ['origInvestment', 'Total original investment', 'num'],
+      ['shareLand', 'Share — Land', 'pct'],
+      ['shareBuildings', 'Share — Buildings', 'pct'],
+      ['shareME', 'Share — Machinery & equipment', 'pct'],
+      ['shareVehicles', 'Share — Vehicles', 'pct'],
+      ['shareOther', 'Share — Other', 'pct'],
+      ['realBeforeTaxROR', 'Real before-tax ROR target', 'pct'],
+      ['operatingPeriod', 'Operating period (years)', 'num'],
+      ['inflationRate', 'Inflation rate', 'pct'],
+      ['debtPctOrigInv', 'Debt, % of original investment', 'pct'],
+      ['intRateOnDebt', 'Interest rate on debt', 'pct'],
+    ],
+  },
+  {
+    title: 'Income tax',
+    fields: [
+      ['incomeTaxRate', 'Income tax rate', 'pct'],
+      ['surtaxRate', 'Surtax rate', 'pct'],
+      ['capGainsTaxRate', 'Capital gains tax rate', 'pct'],
+      ['dividendTaxCredit', 'Dividend withholding tax / credit', 'pct'],
+      ['persTaxOnDivds', 'Personal tax on dividends', 'pct'],
+      ['persCGTaxRate', 'Personal capital gains tax rate', 'pct'],
+    ],
+  },
+  {
+    title: 'Losses, credits & other taxes',
+    fields: [
+      ['carryOverLosses', 'Allow carry-over of losses', 'bool'],
+      ['carryOverCredits', 'Allow carry-over of credits', 'bool'],
+      ['cashFlowTax', 'Cash-flow tax', 'pct'],
+      ['excessProfitsTax', 'Excess profits tax', 'pct'],
+      ['propertyWealthTax', 'Property / wealth tax', 'pct'],
+    ],
+  },
+];
+
+function fmtParamVal(val, type) {
+  if (type === 'pct') return (val * 100).toFixed(2) + '%';
+  if (type === 'bool') return val ? 'Yes' : 'No';
+  return val;
+}
+
+function buildReportParams() {
+  const defaults = defaultParams();
+  const container = document.getElementById('rp-params');
+  container.innerHTML = REPORT_PARAM_GROUPS.map(group => `
+    <div class="report-params-group">
+      <h3>${group.title}</h3>
+      <div class="report-params-grid">
+        ${group.fields.map(([path, label, type]) => {
+          const currentVal = getPath(state, path);
+          const defaultVal = getPath(defaults, path);
+          const isChanged = currentVal !== defaultVal;
+          return `<div class="${isChanged ? 'param-changed' : ''}"><span>${label}${isChanged ? ' *' : ''}</span><span>${fmtParamVal(currentVal, type)}</span></div>`;
+        }).join('')}
+      </div>
+    </div>
+  `).join('');
+}
+
+function buildReport() {
+  const result = computeAll(state);
+  const r = result.results;
+
+  document.getElementById('reportDate').textContent =
+    'Generated ' + new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
+  document.getElementById('rp-metr').textContent = fmtPct(r.metr, 2);
+  document.getElementById('rp-btror').textContent = fmtPct(r.btROR_real, 2);
+  document.getElementById('rp-atror').textContent = fmtPct(r.atROR_real, 2);
+  document.getElementById('rp-btror-n').textContent = fmtPct(r.btROR_nominal, 2);
+  document.getElementById('rp-atror-n').textContent = fmtPct(r.atROR_nominal, 2);
+
+  document.getElementById('rp-pv1').textContent = fmtNum(r.pvIncomeCGTax);
+  document.getElementById('rp-pv2').textContent = fmtNum(r.pvCGTaxOnly);
+  document.getElementById('rp-pv3').textContent = fmtNum(r.pvDividendTax);
+  document.getElementById('rp-pv4').textContent = fmtNum(r.pvImportTax);
+  document.getElementById('rp-pv5').textContent = fmtNum(r.pvAllTaxes);
+
+// Grafikleri rapora da çiz (aynı çizim fonksiyonlarını farklı hedef elemente yönlendiriyoruz)
+  renderWedgeInto('rp-wedge', r.btROR_real, r.atROR_real, { w: 600, h: 130 });
+  renderCashflowChartInto('rp-cashflow', result.R[66], result.R[67], state.operatingPeriod, { w: 680, h: 220 });
+
+  buildReportParams();
+}
+
+function setupScenarioSelect() {
+  const select = document.getElementById('scenarioSelect');
+  select.addEventListener('change', () => {
+    loadScenario(select.value);
+  });
+}
+
+function setupDownloadReport() {
+  const btn = document.getElementById('downloadReportBtn');
+  btn.addEventListener('click', () => {
+    buildReport();
+    window.print();
+  });
+}
+
+/* ============================================================================
+   INIT
+   ========================================================================= */
+   
+function setupHowItWorks() {
+  const btn = document.getElementById('howItWorksBtn');
+  const overlay = document.getElementById('howItWorksOverlay');
+  const closeBtn = document.getElementById('howItWorksClose');
+
+  btn.addEventListener('click', () => {
+    overlay.classList.add('open');
+  });
+
+  closeBtn.addEventListener('click', () => {
+    overlay.classList.remove('open');
+  });
+
+  // Overlay'in karanlık kısmına (dışına) tıklayınca da kapansın
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) {
+      overlay.classList.remove('open');
+    }
+  });
+
+  // Escape tuşuyla da kapansın
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') overlay.classList.remove('open');
+  });
+// Formül göster/gizle butonları
+  document.querySelectorAll('.hiw-toggle').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const targetId = btn.dataset.target;
+      const target = document.getElementById(targetId);
+      const isOpen = target.classList.toggle('open');
+      btn.textContent = isOpen ? 'Hide the formula' : 'Show the formula';
+    });
+  });
+}
+function init() {
+  state = defaultParams();
+  buildTabs();
+  buildPanelBody();
+  recalculate();
+  setupHowItWorks();
+  setupDownloadReport();
+  setupScenarioSelect();
+}
+document.addEventListener('DOMContentLoaded', init);
+
+</script>
+</body>
+</html>
